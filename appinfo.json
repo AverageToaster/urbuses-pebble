@@ -1,0 +1,17 @@
+{
+  "uuid": "0367ebb0-4218-4f1b-b372-a3703374c960",
+  "shortName": "urbuses",
+  "longName": "urbuses pebble",
+  "companyName": "violentsquid",
+  "versionCode": 1,
+  "versionLabel": "1.0.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": []
+  }
+}

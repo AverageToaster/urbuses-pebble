@@ -5,12 +5,17 @@ function getInfo(){
 	req.onload = function(e) {
 		if (req.readyState == 4 && req.status == 200) {
 		  if(req.status == 200) {
-		  	var data = JSON.parse(req.responseText);
-		  	var arrival = new Date(data.data[0].arrivals[0].arrival_at);
-		  	var now = new Date();
-		  	var minutes = Math.floor(((arrival-now)/1000)/60);
 		    var dict = {};
-		    dict[0] = minutes;
+		  	var data = JSON.parse(req.responseText);
+		  	if (data.data[0].arrivals[0] == undefined){
+		  		dict[0] = -1;
+		  	}
+			else{ 	
+			  	var arrival = new Date(data.data[0].arrivals[0].arrival_at);
+			  	var now = new Date();
+			  	var minutes = Math.floor(((arrival-now)/1000)/60);
+			    dict[0] = minutes;
+		    }
 		    Pebble.sendAppMessage(dict);
 		  } else { console.log("Error"); }
 		}

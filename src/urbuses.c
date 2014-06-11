@@ -64,12 +64,15 @@ static void process_tuple(Tuple *t){
 	  	text_layer_set_text(minute_text_layer, "minutes");
 	  }
   }
+  else if (value == -1)
+  {
+  	text_layer_set_text(time_layer, " -- ");
+  	text_layer_set_text(minute_text_layer, "No Arrival Times");	
+  }
   else{
   	text_layer_set_text(time_layer, "NOW");
   	text_layer_set_text(minute_text_layer, "");
   }
-
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "");
   time_estimate = value;
 }
 static void in_received_handler(DictionaryIterator *iter, void *context)

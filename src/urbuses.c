@@ -8,9 +8,9 @@ static Window *window;
 static TextLayer *stop_layer;
 static TextLayer *route_layer;
 static TextLayer *time_layer;
-static TextLayer *under_time_layer;
+static TextLayer *minute_text_layer;
 
-int time_estimate = -54;
+int time_estimate = -54; /*Random number that'll never be reached. Used to prevent the tick timer from messing stuff up on init*/
 char time_buffer[32];
 
 
@@ -48,105 +48,28 @@ static char* stops[NUM_STOPS] =
 	"4140930",
 	"4140934"
 };
-static char* routes[NUM_STOPS] = {"4004990"};
-/*// static int times[NUM_STOPS];
-
-
- Going a different route.
-
-static void routes_window_unload(Window *window) 
-{
-  simple_menu_layer_destroy(simple_menu_layer_routes);
-}
-
-static void routes_window_load(Window *window){
-  char* text[5] = {"route1","route2","route3","route4","route5"};
-
-  for (int i = 0; i < NUM_ROUTES; i++){
-	menu_items_routes[i] = (SimpleMenuItem){
-	  .title = routes[i],
-	  .subtitle = "## minutes",
-	};
-  }
-  menu_sections_routes[0] = (SimpleMenuSection){
-  .num_items = NUM_ROUTES,
-  .items = menu_items_routes,
-  };
-
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_frame(window_layer);
-
-  simple_menu_layer_routes = simple_menu_layer_create(bounds, window, menu_sections_routes, 1, NULL);
-
-  layer_add_child(window_layer, simple_menu_layer_get_layer(simple_menu_layer_routes));
-}
-static void menu_select_callback_stops(int index, void* ctx)
-{
-  sub_window = window_create();
-
-  window_set_window_handlers(sub_window, (WindowHandlers){
-	.load = routes_window_load,
-	.unload = routes_window_unload,
-  });
-  window_stack_push(sub_window, true);
-}
-
-static void stops_window_load(Window *window){
-  for (int i = 0; i <NUM_STOPS; i++)
-  {
-	menu_items_stops[i] = (SimpleMenuItem){
-	  .title = stops_name[i],
-	  .callback = menu_select_callback_stops,
-	};
-  }
-  menu_sections_stops[0] = (SimpleMenuSection){
-	.num_items = NUM_STOPS,
-	.items = menu_items_stops,
-  };
-
-  Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_frame(window_layer);
-
-  simple_menu_layer_stops = simple_menu_layer_create(bounds, window, menu_sections_stops, 1, NULL);
-
-  layer_add_child(window_layer, simple_menu_layer_get_layer(simple_menu_layer_stops));
-
-}
-
-static void stops_window_unload(Window *window) 
-{
-  simple_menu_layer_destroy(simple_menu_layer_stops);
-}
-
-
-  // for (int i = 0; i < 32; i++){
-  // if (stops_input[i] != NULL){
-  //   // strcpy(test, stops_input[i]);
-  //   // test = stops_input[i];
-  //   // snprintf(test, 60, "%s %d", test, i);
-  //   // APP_LOG(APP_LOG_LEVEL_DEBUG, stops_input[i]);
-  // }
-  // else
-  // {
-  //   char* test = "NULL";
-  //   snprintf(test, 60, "%s test", test);
-  //   APP_LOG(APP_LOG_LEVEL_DEBUG, test); 
-  // }
-  // }
-// }
-*/
+static char* routes[NUM_ROUTES] = {"4004990"};
+static char* routes_name[NUM_ROUTES] = {"Summer Line"};
 
 static void process_tuple(Tuple *t){
   int key = t->key;
   int value = t->value->int32;
-  snprintf(time_buffer, sizeof (" XX "), " %d ", value);
-  text_layer_set_text(time_layer, (char*) &time_buffer);
-  if (value == 1){
-  	text_layer_set_text(under_time_layer, "minute");
+  if (value > 0){
+	  snprintf(time_buffer, sizeof (" XX "), " %d ", value);
+	  text_layer_set_text(time_layer, (char*) &time_buffer);
+	  if (value == 1){
+	  	text_layer_set_text(minute_text_layer, "minute");
+	  }
+	  else{
+	  	text_layer_set_text(minute_text_layer, "minutes");
+	  }
   }
   else{
-  	text_layer_set_text(under_time_layer, "minutes");
+  	text_layer_set_text(time_layer, "NOW");
+  	text_layer_set_text(minute_text_layer, "");
   }
+
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "");
   time_estimate = value;
 }
 static void in_received_handler(DictionaryIterator *iter, void *context)
@@ -194,11 +117,11 @@ static void window_load(Window *window)
 	
 	layer_add_child(window_layer, text_layer_get_layer(time_layer));
 
-	under_time_layer = text_layer_create(GRect(0,111, bounds.size.w, 28));
-	text_layer_set_text(under_time_layer, "minutes");
-	text_layer_set_font(under_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-	text_layer_set_text_alignment(under_time_layer, GTextAlignmentCenter);
-	layer_add_child(window_layer, text_layer_get_layer(under_time_layer));
+	minute_text_layer = text_layer_create(GRect(0,111, bounds.size.w, 28));
+	text_layer_set_text(minute_text_layer, "minutes");
+	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
+	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
 }
 
 void send_int(uint8_t key, uint8_t cmd)
@@ -214,21 +137,27 @@ void send_int(uint8_t key, uint8_t cmd)
 
 void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "entering tick_callback");
 	if (tick_time->tm_min % 5 == 0){
+		APP_LOG(APP_LOG_LEVEL_DEBUG,"5 min refresh");
 		send_int(5,5);
+
 	}
 	else{
 		time_estimate--;
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Subtracting minute");
 		if (time_estimate == -55){}
 		else if (time_estimate <= 0)
 		{
+			APP_LOG(APP_LOG_LEVEL_DEBUG, "0 minutes, getting new estimate");
 			send_int(5,5);
 		}
 		else{
+			APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating minute");
 			snprintf(time_buffer, sizeof(" XX "), " %d ", time_estimate);
 			text_layer_set_text(time_layer, (char*) &time_buffer);
 			if (time_estimate == 1){
-				text_layer_set_text(under_time_layer, "minute");
+				text_layer_set_text(minute_text_layer, "minute");
 			}
 		}
 	}
@@ -251,7 +180,7 @@ static void deinit(){
 	text_layer_destroy(stop_layer);
 	text_layer_destroy(route_layer);
 	text_layer_destroy(time_layer);
-	text_layer_destroy(under_time_layer);
+	text_layer_destroy(minute_text_layer);
 	window_destroy(window);
 
 	tick_timer_service_unsubscribe();

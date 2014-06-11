@@ -3,13 +3,14 @@
   "shortName": "urbuses",
   "longName": "urbuses pebble",
   "companyName": "violentsquid",
+  "capabilities": [ "configurable" ],
   "versionCode": 1,
   "versionLabel": "1.0.0",
   "watchapp": {
     "watchface": false
   },
   "appKeys": {
-    "dummy": 0
+    "STOPS": 0
   },
   "resources": {
     "media": []

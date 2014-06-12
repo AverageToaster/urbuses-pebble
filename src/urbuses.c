@@ -3,6 +3,15 @@
 #define NUM_STOPS 14
 #define NUM_ROUTES 1
 
+enum{
+	CURRENT_VIEW_TIME= 0,
+    PRESET_NUMBER= 1,
+    PRESET_ROUTE_ID= 2,
+    PRESET_ROUTE_NAME= 3,
+    PRESET_STOP_ID= 4,
+    PRESET_STOP_NAME= 5
+};
+
 static Window *window;
 
 static TextLayer *stop_layer;
@@ -10,8 +19,13 @@ static TextLayer *route_layer;
 static TextLayer *time_layer;
 static TextLayer *minute_text_layer;
 
+int most_recent_preset = 0;
+int current_view = 1;
 int time_estimate = -54; /*Random number that'll never be reached. Used to prevent the tick timer from messing stuff up on init*/
 char time_buffer[32];
+char stop_buffer[32];
+char route_buffer[32];
+
 
 
 static char* stops_name[NUM_STOPS] = 
@@ -51,29 +65,89 @@ static char* stops[NUM_STOPS] =
 static char* routes[NUM_ROUTES] = {"4004990"};
 static char* routes_name[NUM_ROUTES] = {"Summer Line"};
 
+
+void send_route_request(){
+	DictionaryIterator *iter;
+	app_message_outbox_begin(&iter);
+
+	Tuplet route = TupletInteger(PRESET_ROUTE_ID, persist_read_int(PRESET_ROUTE_ID*10+current_view));
+	dict_write_tuplet(iter, &route);
+	Tuplet stop = TupletInteger(PRESET_STOP_ID, persist_read_int(PRESET_STOP_ID*10+current_view));
+	dict_write_tuplet(iter, &stop);
+
+	app_message_outbox_send();
+}
 static void process_tuple(Tuple *t){
-  int key = t->key;
-  int value = t->value->int32;
-  if (value > 0){
-	  snprintf(time_buffer, sizeof (" XX "), " %d ", value);
-	  text_layer_set_text(time_layer, (char*) &time_buffer);
-	  if (value == 1){
-	  	text_layer_set_text(minute_text_layer, "minute");
-	  }
-	  else{
-	  	text_layer_set_text(minute_text_layer, "minutes");
-	  }
-  }
-  else if (value == -1)
-  {
-  	text_layer_set_text(time_layer, " -- ");
-  	text_layer_set_text(minute_text_layer, "No Arrival Times");	
-  }
-  else{
-  	text_layer_set_text(time_layer, "NOW");
-  	text_layer_set_text(minute_text_layer, "");
-  }
-  time_estimate = value;
+	int key = t->key;
+	int value = t->value->int32;	
+	char string_value[64];
+	strcpy(string_value, t->value->cstring);
+	switch(key){
+	case CURRENT_VIEW_TIME:
+		APP_LOG(APP_LOG_LEVEL_DEBUG,"Updating current time");
+		if (value > 0){
+			char text[64] = "";
+			snprintf(time_buffer, sizeof (" XX "), " %d ", value);
+			if (persist_read_string(PRESET_STOP_NAME*10+current_view, text,64) != E_DOES_NOT_EXIST){
+				snprintf(stop_buffer, sizeof("possiblyrealllongstopnamemaybe"), "%s", text);
+			}
+			else
+			{
+				snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
+			}
+			
+			if (persist_read_string(PRESET_ROUTE_NAME*10+current_view, text,64) != E_DOES_NOT_EXIST){
+				snprintf(route_buffer, sizeof("possiblyrealllongroutenamemaybe"), "%s", text);
+			}
+			else
+			{
+				snprintf(route_buffer, sizeof("STOP PRESET X"), "ROUTE PRESET %d", current_view);
+			}
+
+			text_layer_set_text(stop_layer, (char*) &stop_buffer);
+			text_layer_set_text(route_layer, (char*) &route_buffer);			
+			text_layer_set_text(time_layer, (char*) &time_buffer);
+			if (value == 1){
+		  		text_layer_set_text(minute_text_layer, "minute");
+		  	}
+		  	else{
+		  		text_layer_set_text(minute_text_layer, "minutes");
+		  	}
+	  	}
+		else if (value == -1)
+		{
+			text_layer_set_text(time_layer, " -- ");
+			text_layer_set_text(minute_text_layer, "No Arrival Times");	
+		}
+		else{
+			text_layer_set_text(time_layer, "NOW");
+			text_layer_set_text(minute_text_layer, "");
+		}
+		time_estimate = value;
+		break;
+	case PRESET_NUMBER:
+		most_recent_preset = value;
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating most_recent_preset");
+		break;
+	case PRESET_ROUTE_ID:
+		persist_write_int(PRESET_ROUTE_ID*10+most_recent_preset, value);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_id");
+		break;
+	case PRESET_ROUTE_NAME:
+		persist_write_string(PRESET_ROUTE_NAME*10+most_recent_preset, string_value);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_name");
+		break;
+	case PRESET_STOP_ID:
+		persist_write_int(PRESET_STOP_ID*10+most_recent_preset, value);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_id");
+		break;
+	case PRESET_STOP_NAME:
+		persist_write_string(PRESET_ROUTE_NAME*10+most_recent_preset, string_value);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_name");
+		send_route_request();
+		break;
+	}
+
 }
 static void in_received_handler(DictionaryIterator *iter, void *context)
 {
@@ -99,13 +173,17 @@ static void window_load(Window *window)
 	GRect bounds = layer_get_frame(window_layer);
 
 	stop_layer = text_layer_create(GRect(0, 5, bounds.size.w /* width */, 28 /* height */));
-	text_layer_set_text(stop_layer, stops_name[0]);
+	
+	snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
+	text_layer_set_text(stop_layer, (char*) &stop_buffer);
 	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(stop_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
 
 	route_layer = text_layer_create(GRect(0,33, bounds.size.w, 28));
-	text_layer_set_text(route_layer, "Summer Line");
+
+	snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
+	text_layer_set_text(route_layer, (char*) &route_buffer);
 	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
@@ -125,35 +203,40 @@ static void window_load(Window *window)
 	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
+
+	send_route_request();
 }
 
 void send_int(uint8_t key, uint8_t cmd)
 {
 	DictionaryIterator *iter;
-	app_message_outbox_begin(&iter);
-
-	Tuplet value = TupletInteger(key, cmd);
-	dict_write_tuplet(iter, &value);
-
-	app_message_outbox_send();
+    app_message_outbox_begin(&iter);
+ 
+    Tuplet value = TupletInteger(key, cmd);
+    dict_write_tuplet(iter, &value);
+ 
+    app_message_outbox_send();
 }
+
+
 
 void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "entering tick_callback");
+	send_route_request();
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "entering tick_callback");
 	if (tick_time->tm_min % 5 == 0){
-		APP_LOG(APP_LOG_LEVEL_DEBUG,"5 min refresh");
-		send_int(5,5);
+		// APP_LOG(APP_LOG_LEVEL_DEBUG,"5 min refresh");
+		send_route_request();
 
 	}
 	else{
 		time_estimate--;
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Subtracting minute");
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Subtracting minute");
 		if (time_estimate == -55){}
 		else if (time_estimate <= 0)
 		{
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "0 minutes, getting new estimate");
-			send_int(5,5);
+			// APP_LOG(APP_LOG_LEVEL_DEBUG, "0 minutes, getting new estimate");
+			send_route_request();
 		}
 		else{
 			APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating minute");
@@ -174,7 +257,6 @@ static void init()
 	});
 	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
 	app_message_init();
-	
 
 	window_stack_push(window, true);
 }

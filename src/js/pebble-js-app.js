@@ -24,11 +24,11 @@ function getInfo(route, stop){
 }
 Pebble.addEventListener("ready",
 	function(e){
-		console.log("sup");
+		// console.log("sup");
 	});
 Pebble.addEventListener("appmessage",
 	function(e){
-		console.log(JSON.stringify(e.payload));
+		console.log("WHAT?" + JSON.stringify(e.payload));
 		var route = e.payload["PRESET_ROUTE_ID"];
 		var stop = e.payload["PRESET_STOP_ID"];
 		getInfo(route, stop);
@@ -50,6 +50,7 @@ Pebble.addEventListener("webviewclosed",
 				dict["PRESET_ROUTE_NAME"] = options[i].route_name;
 				dict["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
 				dict["PRESET_STOP_NAME"] = options[i].stop_name;
+				console.log(JSON.stringify(dict));
 				Pebble.sendAppMessage(dict,
 					function(e) {
         				console.log("Sending settings data...");

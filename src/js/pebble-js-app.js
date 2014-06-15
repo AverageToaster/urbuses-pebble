@@ -1,4 +1,8 @@
 function getInfo(route, stop){
+	if (route == 0 || stop == 0){
+		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":-1});
+		return;
+	}
 	var req = new XMLHttpRequest();
 	req.open('GET','https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=283&routes='+route+'&stops='+stop);
 	req.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7");
@@ -8,19 +12,23 @@ function getInfo(route, stop){
 		    var dict = {};
 		  	var data = JSON.parse(req.responseText);
 		  	if (data.data[0] === undefined || data.data[0].arrivals[0] === undefined){
-		  		dict[0] = -1;
+		  		dict["CURRENT_VIEW_TIME"] = -1;
 		  	}
 			else{ 	
 			  	var arrival = new Date(data.data[0].arrivals[0].arrival_at);
 			  	var now = new Date();
 			  	var minutes = Math.floor(((arrival-now)/1000)/60);
-			    dict[0] = minutes;
+			    dict["CURRENT_VIEW_TIME"] = minutes;
 		    }
 		    Pebble.sendAppMessage(dict);
 		  } else { console.log("Error"); }
 		}
 	};
 	req.send();
+	/*if (route == 0 || stop==0)
+		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":-1});
+	else
+		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":stop/200000});*/
 }
 Pebble.addEventListener("ready",
 	function(e){
@@ -35,7 +43,6 @@ Pebble.addEventListener("appmessage",
 	});
 Pebble.addEventListener("showConfiguration", 
 	function(e){
-		// console.log("here");
 		Pebble.openURL("http://tjstein.me/dev/urbuses_settings.html");
 	});
 Pebble.addEventListener("webviewclosed",
@@ -52,20 +59,12 @@ Pebble.addEventListener("webviewclosed",
 				dict2["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
 				dict2["PRESET_STOP_NAME"] = options[i].stop_name;
 				dict[i] = dict2;
-				/*Pebble.sendAppMessage(dict2,
-					function(e) {
-        				console.log("Sending settings data...");
-				    },
-      				function(e) {
-        				console.log("Settings feedback failed!");
-      				});*/
 			}
 		}
 		sendStuff(dict, 1);
 	});
 
 function sendStuff(dict, i){
-	console.log(i);
 	var j = i;
 	if (i > 5 || i < 0){
 		return;

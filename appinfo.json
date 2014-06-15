@@ -15,8 +15,7 @@
     "PRESET_ROUTE_ID": 2,
     "PRESET_ROUTE_NAME": 3,
     "PRESET_STOP_ID": 4,
-    "PRESET_STOP_NAME": 5,
-    "TEST":7
+    "PRESET_STOP_NAME": 5
   },
   "resources": {
     "media": []

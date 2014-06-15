@@ -24,8 +24,8 @@ int most_recent_preset = 0;
 int current_view = 1;
 int time_estimate = -54; /*Random number that'll never be reached. Used to prevent the tick timer from messing stuff up on init*/
 char time_buffer[32];
-char stop_buffer[32];
-char route_buffer[32];
+char stop_buffer[64];
+char route_buffer[64];
 
 
 
@@ -98,7 +98,7 @@ void up_click_handler(ClickRecognizerRef recognizer, void* context){
 	if (current_view == 6)
 		current_view = 1;
 	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
-		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 32);
+		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
 		// snprintf(stop_buffer, sizeof("possiblyrealllongstopnamemaybe"), "%s", text);
 	}
 	else
@@ -107,12 +107,12 @@ void up_click_handler(ClickRecognizerRef recognizer, void* context){
 	}
 	text_layer_set_text(stop_layer, (char*) &stop_buffer);
 	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
-		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 32);
+		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
 		// snprintf(route_buffer, sizeof("possiblyrealllongroutenamemaybe"), "%s", text);
 	}
 	else
 	{
-		snprintf(route_buffer, sizeof("STOP PRESET X"), "ROUTE PRESET %d", current_view);
+		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
 	}
 	text_layer_set_text(route_layer, (char*) &route_buffer);
 	send_route_request();
@@ -122,7 +122,7 @@ void down_click_handler(ClickRecognizerRef recognizer, void* context){
 	if (current_view == 0)
 		current_view = 5;
 	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
-		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 32);
+		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
 		// snprintf(stop_buffer, sizeof("possiblyrealllongstopnamemaybe"), "%s", text);
 	}
 	else
@@ -131,12 +131,12 @@ void down_click_handler(ClickRecognizerRef recognizer, void* context){
 	}
 	text_layer_set_text(stop_layer, (char*) &stop_buffer);
 	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
-		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 32);
+		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
 		// snprintf(route_buffer, sizeof("possiblyrealllongroutenamemaybe"), "%s", text);
 	}
 	else
 	{
-		snprintf(route_buffer, sizeof("STOP PRESET X"), "ROUTE PRESET %d", current_view);
+		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
 	}
 	send_route_request();
 }
@@ -165,6 +165,7 @@ static void process_tuple(Tuple *t){
 			APP_LOG(APP_LOG_LEVEL_DEBUG, "No arrival times");
 			text_layer_set_text(time_layer, " -- ");
 			text_layer_set_text(minute_text_layer, "No Arrival Times");	
+
 		}
 		else{
 			APP_LOG(APP_LOG_LEVEL_DEBUG, "hey :(");
@@ -254,7 +255,7 @@ static void window_load(Window *window)
 	GRect bounds = layer_get_frame(window_layer);
 	stop_layer = text_layer_create(GRect(0, 5, bounds.size.w /* width */, 28 /* height */));
 	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
-		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 32);
+		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "UPDATING STOP : %s", (char*) &stop_buffer);
 	}
 	else{
@@ -267,7 +268,7 @@ static void window_load(Window *window)
 	
 	route_layer = text_layer_create(GRect(0,33, bounds.size.w, 28));
 	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
-		persist_read_string(PRESET_ROUTE_NAME*10+current_view, stop_buffer, 32);
+		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
 		// snprintf(stop_buffer, 32, "%s", text);
 	}
 	else{
@@ -344,8 +345,11 @@ void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 
 static void init()
 {
-	if (persist_exists(CURRENT_VIEW_PERSIST))
+	if (persist_exists(CURRENT_VIEW_PERSIST)){
 		current_view = persist_read_int(CURRENT_VIEW_PERSIST);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating current view to %d", current_view);
+
+	}
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers){
 		.load = window_load

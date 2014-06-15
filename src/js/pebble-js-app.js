@@ -41,23 +41,49 @@ Pebble.addEventListener("showConfiguration",
 Pebble.addEventListener("webviewclosed",
 	function(e){
 		var options = JSON.parse(decodeURIComponent(e.response));
+		console.log(JSON.stringify(options));
+		var dict = {};
 		for (var i = 1; i <= 5; i++){
-			console.log("here");
 			if (options[i+""] !== undefined){
-				var dict = {};
-				dict["PRESET_NUMBER"] = i;
-				dict["PRESET_ROUTE_ID"] = parseInt(options[i].route_id);
-				dict["PRESET_ROUTE_NAME"] = options[i].route_name;
-				dict["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
-				dict["PRESET_STOP_NAME"] = options[i].stop_name;
-				console.log(JSON.stringify(dict));
-				Pebble.sendAppMessage(dict,
+				var dict2 = {};
+				dict2["PRESET_NUMBER"] = i;
+				dict2["PRESET_ROUTE_ID"] = parseInt(options[i].route_id);
+				dict2["PRESET_ROUTE_NAME"] = options[i].route_name;
+				dict2["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
+				dict2["PRESET_STOP_NAME"] = options[i].stop_name;
+				dict[i] = dict2;
+				/*Pebble.sendAppMessage(dict2,
 					function(e) {
         				console.log("Sending settings data...");
 				    },
       				function(e) {
         				console.log("Settings feedback failed!");
-      				});
+      				});*/
 			}
 		}
+		sendStuff(dict, 1);
 	});
+
+function sendStuff(dict, i){
+	console.log(i);
+	var j = i;
+	if (i > 5 || i < 0){
+		return;
+	}
+	else{
+		if (dict[i] !== undefined){
+			Pebble.sendAppMessage(dict[i],
+				function(e){
+					j = j+1;
+					sendStuff(dict, j);
+				},
+				function(e){
+					conosle.log("Settings feedback failed!");
+				});
+		}
+		else{
+			j=j+1;
+			sendStuff(dict, j);
+		}
+	}
+}

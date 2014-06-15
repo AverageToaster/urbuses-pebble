@@ -10,7 +10,8 @@ enum{
     PRESET_ROUTE_NAME= 3,
     PRESET_STOP_ID= 4,
     PRESET_STOP_NAME= 5,
-    CURRENT_VIEW_PERSIST= 6
+    CURRENT_VIEW_PERSIST= 6,
+    TEST=7
 };
 
 static Window *window;
@@ -90,54 +91,44 @@ void send_route_request(){
 	Tuplet stop = TupletInteger(PRESET_STOP_ID, persist_read_int(PRESET_STOP_ID*10+current_view));
 	dict_write_tuplet(iter, &stop);
 
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Sending dict size: %d", (int)(dict_size(iter)));
+
 	app_message_outbox_send();
+}
+
+void update_stop_and_route_buffers(){
+	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
+		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
+	}
+	else
+	{
+		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating stop_layer, value = %s", (char*) &stop_buffer);
+	text_layer_set_text(stop_layer, (char*) &stop_buffer);
+	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
+		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
+	}
+	else
+	{
+		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating route_layer, value = %s", (char*) &route_buffer);
+	text_layer_set_text(route_layer, (char*) &route_buffer);
 }
 
 void up_click_handler(ClickRecognizerRef recognizer, void* context){
 	current_view++;
 	if (current_view == 6)
 		current_view = 1;
-	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
-		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
-		// snprintf(stop_buffer, sizeof("possiblyrealllongstopnamemaybe"), "%s", text);
-	}
-	else
-	{
-		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
-	}
-	text_layer_set_text(stop_layer, (char*) &stop_buffer);
-	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
-		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
-		// snprintf(route_buffer, sizeof("possiblyrealllongroutenamemaybe"), "%s", text);
-	}
-	else
-	{
-		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
-	}
-	text_layer_set_text(route_layer, (char*) &route_buffer);
+	update_stop_and_route_buffers();
 	send_route_request();
 }
 void down_click_handler(ClickRecognizerRef recognizer, void* context){
 	current_view--;
 	if (current_view == 0)
 		current_view = 5;
-	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
-		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
-		// snprintf(stop_buffer, sizeof("possiblyrealllongstopnamemaybe"), "%s", text);
-	}
-	else
-	{
-		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
-	}
-	text_layer_set_text(stop_layer, (char*) &stop_buffer);
-	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
-		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
-		// snprintf(route_buffer, sizeof("possiblyrealllongroutenamemaybe"), "%s", text);
-	}
-	else
-	{
-		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
-	}
+	update_stop_and_route_buffers();
 	send_route_request();
 }
 
@@ -147,12 +138,16 @@ static void process_tuple(Tuple *t){
 	char string_value[64];
 	strcpy(string_value, t->value->cstring);
 	switch(key){
+	case TEST:
+		APP_LOG(APP_LOG_LEVEL_DEBUG, string_value);
+		break;
 	case CURRENT_VIEW_TIME:
 		APP_LOG(APP_LOG_LEVEL_DEBUG,"Updating current time. Value = %d", value);
 		if (value > 0){
 			APP_LOG(APP_LOG_LEVEL_DEBUG, "########################");
 			snprintf(time_buffer, sizeof (" XX "), " %d ", value);			
 			text_layer_set_text(time_layer, (char*) &time_buffer);
+			APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating time_layer, value = %s", (char*) &time_buffer);
 			if (value == 1){
 		  		text_layer_set_text(minute_text_layer, "minute");
 		  	}
@@ -165,7 +160,6 @@ static void process_tuple(Tuple *t){
 			APP_LOG(APP_LOG_LEVEL_DEBUG, "No arrival times");
 			text_layer_set_text(time_layer, " -- ");
 			text_layer_set_text(minute_text_layer, "No Arrival Times");	
-
 		}
 		else{
 			APP_LOG(APP_LOG_LEVEL_DEBUG, "hey :(");
@@ -180,20 +174,21 @@ static void process_tuple(Tuple *t){
 		break;
 	case PRESET_ROUTE_ID:
 		persist_write_int(PRESET_ROUTE_ID*10+most_recent_preset, value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_id : ");
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_id : %d", value);
 		break;
 	case PRESET_ROUTE_NAME:
 		persist_write_string(PRESET_ROUTE_NAME*10+most_recent_preset, string_value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_name");
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_name : %s", string_value);
 		break;
 	case PRESET_STOP_ID:
 		persist_write_int(PRESET_STOP_ID*10+most_recent_preset, value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_id");
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_id : %d", value);
 		break;
 	case PRESET_STOP_NAME:
 		persist_write_string(PRESET_STOP_NAME*10+most_recent_preset, string_value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_name");
-		send_route_request();
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_name : %s", string_value);
+		if (most_recent_preset == current_view)
+			update_stop_and_route_buffers();
 		break;
 	}
 
@@ -212,9 +207,7 @@ static void in_received_handler(DictionaryIterator *iter, void *context)
 		}
 	}
 }
-static void in_dropped_handler(AppMessageResult reason, void *context) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Dropped!");
-}
+
 char *translate_error(AppMessageResult result) {
   switch (result) {
     case APP_MSG_OK: return "APP_MSG_OK";
@@ -234,8 +227,14 @@ char *translate_error(AppMessageResult result) {
     default: return "UNKNOWN ERROR";
   }
 }
+static void in_dropped_handler(AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Dropped! Reason = %s", translate_error(reason));
+}
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send! %d : %s", reason, translate_error(reason));
+    if (reason == 2){
+    	send_route_request();
+    }
 }
 
 void click_config_provider(void* context){
@@ -261,7 +260,7 @@ static void window_load(Window *window)
 	else{
 		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
 	}
-	text_layer_set_text(stop_layer, (char*) &stop_buffer);
+	// text_layer_set_text(stop_layer, (char*) &stop_buffer);
 	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(stop_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
@@ -274,11 +273,11 @@ static void window_load(Window *window)
 	else{
 		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
 	}
-	text_layer_set_text(route_layer, (char*) &route_buffer);
+	// text_layer_set_text(route_layer, (char*) &route_buffer);
 	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
-
+	update_stop_and_route_buffers();
 
 	snprintf(time_buffer, sizeof(" XX "), " -- ");
 
@@ -296,7 +295,6 @@ static void window_load(Window *window)
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
 
-	send_route_request();
 	print_persists();
 }
 

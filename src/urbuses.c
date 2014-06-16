@@ -40,7 +40,6 @@ void print_persists(){
 }
 
 void send_route_request(){
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering send_route_request (current view = %d)", current_view);
 	DictionaryIterator *iter;
 	app_message_outbox_begin(&iter);
 
@@ -58,19 +57,17 @@ void update_stop_and_route_buffers(){
 	}
 	else
 	{
-		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
+		snprintf(stop_buffer, 64, "STOP PRESET %d", current_view);
 	}
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating stop_layer, value = %s", (char*) &stop_buffer);
 	text_layer_set_text(stop_layer, (char*) &stop_buffer);
+
 	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
 		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
 	}
-	
 	else
 	{
-		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
+		snprintf(route_buffer, 64, "ROUTE PRESET %d", current_view);
 	}
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating route_layer, value = %s", (char*) &route_buffer);
 	text_layer_set_text(route_layer, (char*) &route_buffer);
 }
 
@@ -88,6 +85,9 @@ void down_click_handler(ClickRecognizerRef recognizer, void* context){
 	update_stop_and_route_buffers();
 	send_route_request();
 }
+void select_click_handler(ClickRecognizerRef recognizer, void* context){
+	send_route_request();
+}
 
 static void process_tuple(Tuple *t){
 	int key = t->key;
@@ -99,26 +99,23 @@ static void process_tuple(Tuple *t){
 		if (value > 0){
 			snprintf(time_buffer, sizeof (" XX "), " %d ", value);			
 			text_layer_set_text(time_layer, (char*) &time_buffer);
-			// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating time_layer, value = %s", (char*) &time_buffer);
 			if (value == 1){
-				snprintf(minute_text_buffer, sizeof("minute"), "minute");
+				snprintf(minute_text_buffer, 32, "minute");
 		  		text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 		  	}
 		  	else{
-		  		snprintf(minute_text_buffer, sizeof("minutes"), "minutes");
+		  		snprintf(minute_text_buffer, 32, "minutes");
 		  		text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 		  	}
 	  	}
 		else if (value == -1)
 		{
-			// APP_LOG(APP_LOG_LEVEL_DEBUG, "yo");
 			snprintf(time_buffer, sizeof (" -- "), " -- ");
 			text_layer_set_text(time_layer, (char*) &time_buffer);
-			snprintf(minute_text_buffer, sizeof("No Arrival Times"), "No Arrival Times");
+			snprintf(minute_text_buffer, 32, "No Arrival Times");
 			text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);	
 		}
 		else{
-			// APP_LOG(APP_LOG_LEVEL_DEBUG, "hey :(");
 			text_layer_set_text(time_layer, "NOW");
 			text_layer_set_text(minute_text_layer, "");
 		}
@@ -126,23 +123,18 @@ static void process_tuple(Tuple *t){
 		break;
 	case PRESET_NUMBER:
 		most_recent_preset = value;
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating most_recent_preset to %d", value);
 		break;
 	case PRESET_ROUTE_ID:
 		persist_write_int(PRESET_ROUTE_ID*10+most_recent_preset, value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_id : %d", value);
 		break;
 	case PRESET_ROUTE_NAME:
 		persist_write_string(PRESET_ROUTE_NAME*10+most_recent_preset, string_value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing route_name : %s", string_value);
 		break;
 	case PRESET_STOP_ID:
 		persist_write_int(PRESET_STOP_ID*10+most_recent_preset, value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_id : %d", value);
 		break;
 	case PRESET_STOP_NAME:
 		persist_write_string(PRESET_STOP_NAME*10+most_recent_preset, string_value);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing stop_name : %s", string_value);
 		if (most_recent_preset == current_view){
 			update_stop_and_route_buffers();
 			send_route_request();
@@ -153,7 +145,6 @@ static void process_tuple(Tuple *t){
 }
 static void in_received_handler(DictionaryIterator *iter, void *context)
 {
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "entering in_received_handler");
 	Tuple *t = dict_read_first(iter);
 	if (t){
 		process_tuple(t);
@@ -195,6 +186,7 @@ static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reas
 void click_config_provider(void* context){
 	window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
 	window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
+	window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
 } 
 static void app_message_init(){
 	app_message_register_inbox_received(in_received_handler);
@@ -207,25 +199,13 @@ static void window_load(Window *window)
 {
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_frame(window_layer);
+
 	stop_layer = text_layer_create(GRect(0, 0, bounds.size.w /* width */, 52 /* height */));
-	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
-		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "UPDATING STOP : %s", (char*) &stop_buffer);
-	}
-	else{
-		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
-	}
 	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(stop_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
 	
 	route_layer = text_layer_create(GRect(0,52, bounds.size.w, 24));
-	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
-		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
-	}
-	else{
-		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
-	}
 	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
@@ -243,53 +223,33 @@ static void window_load(Window *window)
 
 	minute_text_layer = text_layer_create(GRect(0,118, bounds.size.w, 28));
 
-	snprintf(minute_text_buffer, sizeof("minutes"), "minutes");
+	snprintf(minute_text_buffer, 32, "minutes");
 	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
-
-	print_persists();
 }
-
-void send_int(uint8_t key, uint8_t cmd)
-{
-	DictionaryIterator *iter;
-    app_message_outbox_begin(&iter);
- 
-    Tuplet value = TupletInteger(key, cmd);
-    dict_write_tuplet(iter, &value);
- 
-    app_message_outbox_send();
-}
-
-
 
 void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "entering tick_callback");
 	if (tick_time->tm_min % 5 == 0){
-		// APP_LOG(APP_LOG_LEVEL_DEBUG,"5 min refresh");
 		send_route_request();
 
 	}
 	else{
 		time_estimate--;
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Subtracting minute");
 		if (time_estimate == -55){
-			// send_route_request();
+			send_route_request();
 		}
 		else if (time_estimate <= 0)
 		{
-			// APP_LOG(APP_LOG_LEVEL_DEBUG, "0 minutes, getting new estimate");
 			send_route_request();
 		}
 		else{
-			// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating minute");
 			snprintf(time_buffer, sizeof(" XX "), " %d ", time_estimate);
 			text_layer_set_text(time_layer, (char*) &time_buffer);
 			if (time_estimate == 1){
-				snprintf(minute_text_buffer, sizeof("minute"), "minute");
+				snprintf(minute_text_buffer, 32, "minute");
 				text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 			}
 		}
@@ -300,8 +260,6 @@ static void init()
 {
 	if (persist_exists(CURRENT_VIEW_PERSIST)){
 		current_view = persist_read_int(CURRENT_VIEW_PERSIST);
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating current view to %d", current_view);
-
 	}
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers){

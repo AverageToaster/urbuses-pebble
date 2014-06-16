@@ -1,12 +1,4 @@
 function getInfo(route, stop){
-	if (route == 0 || stop == 0){
-		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":-1});
-		return;
-	}
-	else{
-		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":33});
-		return;
-	}
 	var req = new XMLHttpRequest();
 	req.open('GET','https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=283&routes='+route+'&stops='+stop);
 	req.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7");
@@ -51,6 +43,9 @@ Pebble.addEventListener("showConfiguration",
 	});
 Pebble.addEventListener("webviewclosed",
 	function(e){
+		if (decodeURIComponent(e.response) === ""){
+			return;
+		}
 		var options = JSON.parse(decodeURIComponent(e.response));
 		window.localStorage.setItem("presets", JSON.stringify(options));
 		var dict = {};
@@ -65,7 +60,6 @@ Pebble.addEventListener("webviewclosed",
 				dict[i] = dict2;
 			}
 		}
-		console.log(JSON.stringify(dict));
 		sendStuff(dict, 1);
 	});
 

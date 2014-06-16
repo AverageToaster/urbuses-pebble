@@ -1,4 +1,8 @@
 function getInfo(route, stop){
+	if (route == 0 || stop == 0){
+		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":-1});
+		return;
+	}
 	var req = new XMLHttpRequest();
 	req.open('GET','https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=283&routes='+route+'&stops='+stop);
 	req.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7");

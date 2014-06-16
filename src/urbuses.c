@@ -249,7 +249,7 @@ static void in_dropped_handler(AppMessageResult reason, void *context)
 */
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) 
 {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send! %d : %s", reason, translate_error(reason));
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send! %d : %s", reason, translate_error(reason));
 }
 
 /*

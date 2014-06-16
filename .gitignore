@@ -1,4 +1,5 @@
 
 # Ignore build generated files
+.gitignore
 build
 *.lock*

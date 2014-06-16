@@ -3,6 +3,10 @@ function getInfo(route, stop){
 		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":-1});
 		return;
 	}
+	else{
+		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":33});
+		return;
+	}
 	var req = new XMLHttpRequest();
 	req.open('GET','https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=283&routes='+route+'&stops='+stop);
 	req.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7");
@@ -25,30 +29,30 @@ function getInfo(route, stop){
 		}
 	};
 	req.send();
-	/*if (route == 0 || stop==0)
-		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":-1});
-	else
-		Pebble.sendAppMessage({"CURRENT_VIEW_TIME":stop/200000});*/
 }
 Pebble.addEventListener("ready",
 	function(e){
-		// console.log("sup");
+		console.log("ready");
 	});
 Pebble.addEventListener("appmessage",
 	function(e){
-		console.log("WHAT?" + JSON.stringify(e.payload));
 		var route = e.payload["PRESET_ROUTE_ID"];
 		var stop = e.payload["PRESET_STOP_ID"];
 		getInfo(route, stop);
 	});
 Pebble.addEventListener("showConfiguration", 
 	function(e){
-		Pebble.openURL("http://tjstein.me/dev/urbuses_settings.html");
+		var config_url = "http://tjstein.me/dev/urbuses_settings.html";
+		if (window.localStorage.getItem("presets") !== null){
+			var options = encodeURIComponent(window.localStorage.getItem("presets"));
+			config_url = config_url +"?" + options;
+		}
+		Pebble.openURL(config_url);
 	});
 Pebble.addEventListener("webviewclosed",
 	function(e){
 		var options = JSON.parse(decodeURIComponent(e.response));
-		console.log(JSON.stringify(options));
+		window.localStorage.setItem("presets", JSON.stringify(options));
 		var dict = {};
 		for (var i = 1; i <= 5; i++){
 			if (options[i+""] !== undefined){
@@ -61,6 +65,7 @@ Pebble.addEventListener("webviewclosed",
 				dict[i] = dict2;
 			}
 		}
+		console.log(JSON.stringify(dict));
 		sendStuff(dict, 1);
 	});
 

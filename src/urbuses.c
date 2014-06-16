@@ -1,8 +1,5 @@
 #include "pebble.h"
 
-#define NUM_STOPS 14
-#define NUM_ROUTES 1
-
 enum{
 	CURRENT_VIEW_TIME= 0,
     PRESET_NUMBER= 1,
@@ -43,7 +40,7 @@ void print_persists(){
 }
 
 void send_route_request(){
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering send_route_request (current view = %d)", current_view);
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering send_route_request (current view = %d)", current_view);
 	DictionaryIterator *iter;
 	app_message_outbox_begin(&iter);
 
@@ -63,7 +60,7 @@ void update_stop_and_route_buffers(){
 	{
 		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
 	}
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating stop_layer, value = %s", (char*) &stop_buffer);
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating stop_layer, value = %s", (char*) &stop_buffer);
 	text_layer_set_text(stop_layer, (char*) &stop_buffer);
 	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
 		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
@@ -73,7 +70,7 @@ void update_stop_and_route_buffers(){
 	{
 		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
 	}
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating route_layer, value = %s", (char*) &route_buffer);
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating route_layer, value = %s", (char*) &route_buffer);
 	text_layer_set_text(route_layer, (char*) &route_buffer);
 }
 
@@ -102,7 +99,7 @@ static void process_tuple(Tuple *t){
 		if (value > 0){
 			snprintf(time_buffer, sizeof (" XX "), " %d ", value);			
 			text_layer_set_text(time_layer, (char*) &time_buffer);
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating time_layer, value = %s", (char*) &time_buffer);
+			// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating time_layer, value = %s", (char*) &time_buffer);
 			if (value == 1){
 				snprintf(minute_text_buffer, sizeof("minute"), "minute");
 		  		text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
@@ -114,13 +111,14 @@ static void process_tuple(Tuple *t){
 	  	}
 		else if (value == -1)
 		{
+			// APP_LOG(APP_LOG_LEVEL_DEBUG, "yo");
 			snprintf(time_buffer, sizeof (" -- "), " -- ");
 			text_layer_set_text(time_layer, (char*) &time_buffer);
 			snprintf(minute_text_buffer, sizeof("No Arrival Times"), "No Arrival Times");
 			text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);	
 		}
 		else{
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "hey :(");
+			// APP_LOG(APP_LOG_LEVEL_DEBUG, "hey :(");
 			text_layer_set_text(time_layer, "NOW");
 			text_layer_set_text(minute_text_layer, "");
 		}
@@ -209,7 +207,7 @@ static void window_load(Window *window)
 {
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_frame(window_layer);
-	stop_layer = text_layer_create(GRect(0, 5, bounds.size.w /* width */, 28 /* height */));
+	stop_layer = text_layer_create(GRect(0, 0, bounds.size.w /* width */, 52 /* height */));
 	if (persist_exists(PRESET_STOP_NAME*10+current_view)){
 		persist_read_string(PRESET_STOP_NAME*10+current_view, stop_buffer, 64);
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "UPDATING STOP : %s", (char*) &stop_buffer);
@@ -217,25 +215,25 @@ static void window_load(Window *window)
 	else{
 		snprintf(stop_buffer, sizeof("STOP PRESET X"), "STOP PRESET %d", current_view);
 	}
-	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(stop_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
 	
-	route_layer = text_layer_create(GRect(0,33, bounds.size.w, 28));
+	route_layer = text_layer_create(GRect(0,52, bounds.size.w, 24));
 	if (persist_exists(PRESET_ROUTE_NAME*10+current_view)){
 		persist_read_string(PRESET_ROUTE_NAME*10+current_view, route_buffer, 64);
 	}
 	else{
 		snprintf(route_buffer, sizeof("ROUTE PRESET X"), "ROUTE PRESET %d", current_view);
 	}
-	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD));
+	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
 	update_stop_and_route_buffers();
 
 	snprintf(time_buffer, sizeof(" XX "), " -- ");
 
-	time_layer = text_layer_create(GRect(0,61, bounds.size.w, 50));
+	time_layer = text_layer_create(GRect(0,76, bounds.size.w, 42));
 	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 	text_layer_set_text(time_layer, (char*) &time_buffer);
 
@@ -243,13 +241,15 @@ static void window_load(Window *window)
 	
 	layer_add_child(window_layer, text_layer_get_layer(time_layer));
 
-	minute_text_layer = text_layer_create(GRect(0,111, bounds.size.w, 28));
+	minute_text_layer = text_layer_create(GRect(0,118, bounds.size.w, 28));
 
 	snprintf(minute_text_buffer, sizeof("minutes"), "minutes");
 	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
+
+	print_persists();
 }
 
 void send_int(uint8_t key, uint8_t cmd)
@@ -267,7 +267,7 @@ void send_int(uint8_t key, uint8_t cmd)
 
 void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "entering tick_callback");
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "entering tick_callback");
 	if (tick_time->tm_min % 5 == 0){
 		// APP_LOG(APP_LOG_LEVEL_DEBUG,"5 min refresh");
 		send_route_request();
@@ -285,7 +285,7 @@ void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 			send_route_request();
 		}
 		else{
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating minute");
+			// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating minute");
 			snprintf(time_buffer, sizeof(" XX "), " %d ", time_estimate);
 			text_layer_set_text(time_layer, (char*) &time_buffer);
 			if (time_estimate == 1){
@@ -300,7 +300,7 @@ static void init()
 {
 	if (persist_exists(CURRENT_VIEW_PERSIST)){
 		current_view = persist_read_int(CURRENT_VIEW_PERSIST);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating current view to %d", current_view);
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Updating current view to %d", current_view);
 
 	}
 	window = window_create();

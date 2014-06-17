@@ -23,7 +23,8 @@ static TextLayer *minute_text_layer;
 // various global variables
 static int most_recent_preset = 0;
 static int current_view = 1;
-static int time_estimate = -54; /*Random number that'll never be reached. Used to prevent the tick timer from messing stuff up on init*/
+// Set initial time estimate to -1, so it automatically refreshes on load.
+static int time_estimate = -1;
 static char time_buffer[sizeof(" -- ")];
 static char stop_buffer[64];
 static char route_buffer[64];
@@ -70,6 +71,17 @@ static void update_text_layers()
 }
 
 /*
+* Function to update time and minute text layers to show that the time is refreshing.
+*/
+static void refreshing_text_layer()
+{
+	snprintf(time_buffer, sizeof(" XX "), " -- ");
+	text_layer_set_text(time_layer, (char*) &time_buffer);
+	snprintf(minute_text_buffer, 32, "Refreshing...");
+	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
+}
+
+/*
 * Function to handle the up click while inside the app. 
 * When the user hits up, move the current view up by 1, looping around at 6 to 1,
 * then update the text layers and current time for the new preset. 
@@ -80,6 +92,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void* context)
 	if (current_view == 6)
 		current_view = 1;
 	update_text_layers();
+	refreshing_text_layer();
 	update_time();
 }
 
@@ -94,6 +107,7 @@ static void down_click_handler(ClickRecognizerRef recognizer, void* context)
 	if (current_view == 0)
 		current_view = 5;
 	update_text_layers();
+	refreshing_text_layer();
 	update_time();
 }
 
@@ -103,6 +117,7 @@ static void down_click_handler(ClickRecognizerRef recognizer, void* context)
 */
 static void select_click_handler(ClickRecognizerRef recognizer, void* context)
 {
+	refreshing_text_layer();
 	update_time();
 }
 
@@ -187,6 +202,7 @@ static void process_tuple(Tuple *t)
 			if (most_recent_preset == current_view)
 			{
 				update_text_layers();
+				refreshing_text_layer();
 				update_time();
 			}
 			break;
@@ -327,17 +343,20 @@ static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
 	// Every 10 minutes, it refreshes the time from the phone.
 	if (tick_time->tm_min % 10 == 0)
+	{
+		refreshing_text_layer();
 		update_time();
+	}
 	else
 	{
 		// Lower the current time_estime.
 		time_estimate--;
-		// If the app just loaded, refresh the time estimate.
-		if (time_estimate == -55)
+		// If the app just loaded, or have gone into the negative, refresh the time.
+		if (time_estimate <= 0)
+		{
+			refreshing_text_layer();
 			update_time();
-		// If the time has hit 0 (or lower), refresh the time.
-		else if (time_estimate <= 0)
-			update_time();
+		}
 		// Otherwise, just update the time and minute layers with the new time estimate.
 		else
 		{

@@ -121,7 +121,7 @@ function sendStuff(dict, i){
 					sendStuff(dict, j);
 				},
 				function(e){
-					conosle.log("Settings feedback failed!");
+					console.log("Settings feedback failed!");
 				});
 		}
 		// Even if dict[i] doesn't exist, they may have set other presets.

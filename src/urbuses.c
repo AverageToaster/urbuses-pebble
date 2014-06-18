@@ -30,6 +30,21 @@ static char stop_buffer[64];
 static char route_buffer[64];
 static char minute_text_buffer[32];
 
+
+static void print_persists(){
+	char temp[64];
+	for (int i = 1; i <= 5; i++){
+		if (persist_exists(i*10+PRESET_STOP_NAME)){
+			persist_read_string(i*10+PRESET_STOP_NAME, temp, 64);
+			APP_LOG(APP_LOG_LEVEL_DEBUG, "STOP NAME %d : %s", i, temp);
+		}
+		if (persist_exists(i*10+PRESET_ROUTE_NAME)){
+			persist_read_string(i*10+PRESET_ROUTE_NAME, temp, 64);
+			APP_LOG(APP_LOG_LEVEL_DEBUG, "ROUTE NAME %d : %s", i, temp);
+		}
+	}
+}
+
 /*
 * Sends an app_message to the phone to request a time update.
 */
@@ -195,7 +210,6 @@ static void process_tuple(Tuple *t)
 			break;
 		case PRESET_STOP_ID:
 			persist_write_int(most_recent_preset*10+PRESET_STOP_ID, value);
-			break;
 		case PRESET_STOP_NAME:
 			persist_write_string(most_recent_preset*10+PRESET_STOP_NAME, string_value);
 			// If this preset update was the current screen, update the current screen to reflect the changes.
@@ -209,6 +223,32 @@ static void process_tuple(Tuple *t)
 	}
 }
 /*
+* Function to help with processing the dictionary received from the phone.
+* Sorts the dictionary back into ascending order for correct processing.
+*/
+static void fix_dict_order(DictionaryIterator *iter)
+{
+	Tuple *tArr[5];
+	Tuple *t = dict_read_first(iter);
+
+	if (t){
+		tArr[(t->key)-1] = t;
+	}
+	while (t != NULL)
+	{
+		t = dict_read_next(iter);
+		if (t)
+		{
+			tArr[(t->key)-1] = t;
+		}
+	}
+
+	for (int i = 0; i < 5; i++){
+		process_tuple(tArr[i]);
+	}
+}
+
+/*
 * Handler function for receiving the information from the phone.
 * Information is received as a dictionary and split apart into Tuples.
 * These are send to process_tuple for the information to be processed.
@@ -217,11 +257,13 @@ static void in_received_handler(DictionaryIterator *iter, void *context)
 {
 	Tuple *t = dict_read_first(iter);
 	if (t)
-		process_tuple(t);
-	while (t != NULL)
 	{
-		t= dict_read_next(iter);
-		if (t)
+		if (t->key > 0)
+		{
+			fix_dict_order(iter);
+			return;
+		}
+		else
 			process_tuple(t);
 	}
 }

@@ -351,7 +351,7 @@ static void window_load(Window *window)
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
 	
 	// Same with route.
-	route_layer = text_layer_create(GRect(0,52, bounds.size.w, 24));
+	route_layer = text_layer_create(GRect(0,52, bounds.size.w, 28));
 	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
@@ -362,7 +362,7 @@ static void window_load(Window *window)
 	// Set the char* buffer for time.
 	snprintf(time_buffer, sizeof(" XX "), " -- ");
 	// Same deal with time text layer.
-	time_layer = text_layer_create(GRect(0,76, bounds.size.w, 42));
+	time_layer = text_layer_create(GRect(0,80, bounds.size.w, 42));
 	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 	// Actually set the text in this method for time_layer.
 	text_layer_set_text(time_layer, (char*) &time_buffer);
@@ -371,7 +371,7 @@ static void window_load(Window *window)
 
 	// And create and add the final layer, the "minutes" text under the time.
 	snprintf(minute_text_buffer, 32, "minutes");
-	minute_text_layer = text_layer_create(GRect(0,118, bounds.size.w, 28));
+	minute_text_layer = text_layer_create(GRect(0,122, bounds.size.w, 28));
 	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);

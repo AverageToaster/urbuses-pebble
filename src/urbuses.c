@@ -203,15 +203,28 @@ static void process_tuple(Tuple *t)
 		* (the logic behind number*10+IDENT means that the range 12-15 will be the information for preset 1).
 		*/
 		case PRESET_ROUTE_ID:
-			persist_write_int(most_recent_preset*10+PRESET_ROUTE_ID, value);
+			if (value != -1)
+				persist_write_int(most_recent_preset*10+PRESET_ROUTE_ID, value);
+			else
+				persist_delete(most_recent_preset*10+PRESET_ROUTE_ID);
 			break;
 		case PRESET_ROUTE_NAME:
-			persist_write_string(most_recent_preset*10+PRESET_ROUTE_NAME, string_value);
+			if (value != -1)
+				persist_write_string(most_recent_preset*10+PRESET_ROUTE_NAME, string_value);
+			else
+				persist_delete(most_recent_preset*10+PRESET_ROUTE_NAME);
 			break;
 		case PRESET_STOP_ID:
-			persist_write_int(most_recent_preset*10+PRESET_STOP_ID, value);
+			if (value != -1)
+				persist_write_int(most_recent_preset*10+PRESET_STOP_ID, value);
+			else
+				persist_delete(most_recent_preset*10+PRESET_STOP_ID);
+			break;
 		case PRESET_STOP_NAME:
-			persist_write_string(most_recent_preset*10+PRESET_STOP_NAME, string_value);
+			if (value != -1)
+				persist_write_string(most_recent_preset*10+PRESET_STOP_NAME, string_value);
+			else
+				persist_delete(most_recent_preset*10+PRESET_STOP_NAME);
 			// If this preset update was the current screen, update the current screen to reflect the changes.
 			if (most_recent_preset == current_view)
 			{

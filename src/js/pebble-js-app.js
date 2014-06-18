@@ -64,7 +64,7 @@ Pebble.addEventListener("appmessage",
 */
 Pebble.addEventListener("showConfiguration", 
 	function(e){
-		var config_url = "http://tjstein.me/dev/urbuses_settings.html";
+		var config_url = "http://tjstein.me/urbuses/urbuses_settings.html";
 		if (window.localStorage.getItem("presets") !== null){
 			var options = encodeURIComponent(window.localStorage.getItem("presets"));
 			config_url = config_url +"?" + options;
@@ -93,10 +93,18 @@ Pebble.addEventListener("webviewclosed",
 			if (options[i+""] !== undefined){
 				var dict2 = {};
 				dict2["PRESET_NUMBER"] = i;
-				dict2["PRESET_ROUTE_ID"] = parseInt(options[i].route_id);
-				dict2["PRESET_ROUTE_NAME"] = options[i].route_name;
-				dict2["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
-				dict2["PRESET_STOP_NAME"] = options[i].stop_name;
+				if (options[i].route_id != 0){
+					dict2["PRESET_ROUTE_ID"] = parseInt(options[i].route_id);
+					dict2["PRESET_ROUTE_NAME"] = options[i].route_name;
+					dict2["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
+					dict2["PRESET_STOP_NAME"] = options[i].stop_name;
+				}
+				else{
+					dict2["PRESET_ROUTE_ID"] = -1;
+					dict2["PRESET_ROUTE_NAME"] = -1;
+					dict2["PRESET_STOP_ID"] = -1;
+					dict2["PRESET_STOP_NAME"] = -1;
+				}
 				dict[i] = dict2;
 			}
 		}

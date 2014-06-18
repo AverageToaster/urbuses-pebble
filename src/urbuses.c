@@ -1,7 +1,6 @@
 #include "pebble.h"
 
 // Cases for the received key from the phone.
-
 enum
 {
 	CURRENT_VIEW_TIME= 0,
@@ -30,20 +29,6 @@ static char stop_buffer[64];
 static char route_buffer[64];
 static char minute_text_buffer[32];
 
-
-static void print_persists(){
-	char temp[64];
-	for (int i = 1; i <= 5; i++){
-		if (persist_exists(i*10+PRESET_STOP_NAME)){
-			persist_read_string(i*10+PRESET_STOP_NAME, temp, 64);
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "STOP NAME %d : %s", i, temp);
-		}
-		if (persist_exists(i*10+PRESET_ROUTE_NAME)){
-			persist_read_string(i*10+PRESET_ROUTE_NAME, temp, 64);
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "ROUTE NAME %d : %s", i, temp);
-		}
-	}
-}
 
 /*
 * Sends an app_message to the phone to request a time update.
@@ -192,7 +177,9 @@ static void process_tuple(Tuple *t)
 			break;
 		/*
 		* The remaining cases are all for recieving new presets from the phone.
-		* Each case simply writes the received preset value into persistant storage for access later.
+		* Each case writes the received preset value into persistant storage, if there is something to write.
+		* If a -1 is received, that means the preset should return to default, and the persistant storage at that
+		* preset is deleted.
 		*/
 		case PRESET_NUMBER:
 			most_recent_preset = value;
@@ -263,21 +250,24 @@ static void fix_dict_order(DictionaryIterator *iter)
 
 /*
 * Handler function for receiving the information from the phone.
-* Information is received as a dictionary and split apart into Tuples.
-* These are send to process_tuple for the information to be processed.
+* If the dictionary is a time update, simply process the tuple.
+* Otherwise, send it to the above helper method to ensure the dictionary values
+* are in the correct order.
 */
 static void in_received_handler(DictionaryIterator *iter, void *context)
 {
 	Tuple *t = dict_read_first(iter);
 	if (t)
 	{
-		if (t->key > 0)
+		if (t->key = 0)
+		{
+			process_tuple(t);
+		}
+		else
 		{
 			fix_dict_order(iter);
 			return;
 		}
-		else
-			process_tuple(t);
 	}
 }
 

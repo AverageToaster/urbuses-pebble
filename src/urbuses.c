@@ -259,14 +259,13 @@ static void in_received_handler(DictionaryIterator *iter, void *context)
 	Tuple *t = dict_read_first(iter);
 	if (t)
 	{
-		if (t->key = 0)
+		if (t->key == 0)
 		{
 			process_tuple(t);
 		}
 		else
 		{
 			fix_dict_order(iter);
-			return;
 		}
 	}
 }

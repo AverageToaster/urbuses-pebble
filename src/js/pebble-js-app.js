@@ -46,7 +46,7 @@ Pebble.addEventListener("ready",
 /*
 * Listener and function are called when the phone receives a message from the app. 
 * Messages are always a Tuple in the form of (route, stop).
-* All messages from the app to the phone are requestion time estimate, so parse the tuple,
+* All messages from the app to the phone are requesting time estimate, so parse the tuple,
 * and send it to getTimeEstimate().
 */
 Pebble.addEventListener("appmessage",

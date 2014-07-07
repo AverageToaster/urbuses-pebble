@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>UR Buses Config</title>
+		<script type="text/javascript" src="urbuses_settings.js"></script>
+	</head>
+	<body>
+		<h1>UR Buses Configuration</h1>
+		<p>You can save 5 Route/Stop combinations to view on your Pebble at any time.</p>
+		<h3>Controls:</h3>
+		<p>UP and DOWN keys cycle through presets.</p>
+		<p>SELECT refreshes the time estimate of the current preset.</p>
+		<p>To remove presets, select the top, blank option on a previously assigned preset.</p>
+		<h3 id="instruction">Loading Previous Presets...</h3>
+		<select id="save_num" disabled>
+			<option value="NONE"></option>
+			<option value="1">1</option>
+			<option value="2">2</option>
+			<option value="3">3</option>
+			<option value="4">4</option>
+			<option value="5">5</option>
+		</select>
+		<br/>
+		<select id="route" style="width:200px" disabled>
+			<option value = "NONE"></option>
+		</select>
+		<br/>
+		<select id="stop" style="width:200px" disabled>
+			<option value = "NONE"></option>
+		</select>
+		<br/>
+		<button id="submit" disabled >Submit</button>
+		<button id="cancel">Cancel</button>
+	</body>
+</html>

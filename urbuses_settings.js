@@ -8,7 +8,12 @@ var presets_ids = [[0,0],[0,0],[0,0],[0,0],[0,0]];
 var routes = [];
 var stops = [];
 var routes_stops = [];
-
+/*
+ * NOTE: THE VARIABLE BELOW NEEDS A MASHAPE IDENTIFIER TO WORK.
+ * If you want to use this code in your own Transloc bus app, you need your own identifier
+ * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
+ */
+var identifier = "";
 
 window.onload = function(){
 	//Set up the onchange and onclick functions.
@@ -21,11 +26,8 @@ window.onload = function(){
 	var req = new XMLHttpRequest();
 	var text = 'https://transloc-api-1-2.p.mashape.com/routes.json?agencies=283';
 	req.open('GET',text);
-	/*
-	* NOTE: THE NUMBER IN THIS REQUEST HANDLER IS MY SPECIFIC MASHAPE IDENTIFIER
-	* If you want to use this code in your own Transloc bus app, you should probably use your own identifier.
-	*/
-	req.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7")
+	
+	req.setRequestHeader("X-Mashape-Authorization", identifier)
 	req.onload = function(e) {
 		if (req.readyState == 4 && req.status == 200) {
 		  	if(req.status == 200) {
@@ -43,7 +45,7 @@ window.onload = function(){
 			  	var req2 = new XMLHttpRequest();
 			  	text = 'https://transloc-api-1-2.p.mashape.com/stops.json?agencies=283';
 				req2.open('GET',text);
-				req2.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7");
+				req2.setRequestHeader("X-Mashape-Authorization",identifier);
 				req2.onload = function(e){
 					if (req2.readyState == 4 && req2.status == 200){
 						var data = JSON.parse(req2.responseText).data;

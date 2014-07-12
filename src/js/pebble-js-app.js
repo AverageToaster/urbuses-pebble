@@ -11,10 +11,11 @@ function getTimeEstimate(route, stop){
 	var req = new XMLHttpRequest();
 	req.open('GET','https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=283&routes='+route+'&stops='+stop);
 	/*
-	* NOTE: THE NUMBER IN THIS REQUEST HANDLER IS MY SPECIFIC MASHAPE IDENTIFIER
-	* If you want to use this code in your own Transloc bus app, you should probably use your own identifier.
+	* NOTE: THE CALL BELOW NEEDS A MASHAPE IDENTIFIER TO WORK.
+	* If you want to use this code in your own Transloc bus app, you need your own identifier
+	* To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
 	*/
-	req.setRequestHeader("X-Mashape-Authorization","b9ARY1Ni8l7atULy37SUlIdLXuKa4QH7"); 
+	req.setRequestHeader("X-Mashape-Authorization",/* INSERT YOUR MASHAPE API IDENTIFIER HERE */); 
 	req.onload = function(e) {
 		if (req.readyState == 4 && req.status == 200) {
 		  if(req.status == 200) {

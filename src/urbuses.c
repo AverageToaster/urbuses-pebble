@@ -42,7 +42,6 @@ static void update_time()
 	dict_write_tuplet(iter, &route);
 	Tuplet stop = TupletInteger(PRESET_STOP_ID, persist_read_int(current_view*10+PRESET_STOP_ID));
 	dict_write_tuplet(iter, &stop);
-
 	app_message_outbox_send();
 }
 
@@ -310,6 +309,10 @@ static void in_dropped_handler(AppMessageResult reason, void *context)
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) 
 {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send! %d : %s", reason, translate_error(reason));
+	if (reason == APP_MSG_SEND_TIMEOUT){
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Resending App Message.");
+		update_time();
+	}
 }
 
 /*
@@ -378,6 +381,7 @@ static void window_load(Window *window)
 	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
+
 }
 
 /*

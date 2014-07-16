@@ -5,7 +5,7 @@
   "companyName": "violentsquid",
   "capabilities": [ "configurable" ],
   "versionCode": 1,
-  "versionLabel": "1.0.5",
+  "versionLabel": "1.0.6",
   "watchapp": {
     "watchface": false
   },
@@ -18,6 +18,13 @@
     "PRESET_STOP_NAME": 5
   },
   "resources": {
-    "media": []
+    "media": [
+      {
+        "menuIcon": true,
+        "type": "png",
+        "name": "MENU_ICON",
+        "file": "images/menu_icon.png"
+      }
+    ]
   }
 }

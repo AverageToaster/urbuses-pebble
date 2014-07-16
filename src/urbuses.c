@@ -435,6 +435,7 @@ static void init()
 	window_set_click_config_provider(window, click_config_provider);
 	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
 	window_stack_push(window, true);
+
 }
 
 /*
@@ -452,6 +453,7 @@ static void deinit()
 	persist_write_int(CURRENT_VIEW_PERSIST, current_view);
 
 	tick_timer_service_unsubscribe();
+
 }
 
 /*

@@ -35,8 +35,8 @@ This is the code that runs in the Pebble phone application. It recieves messages
 
 Similarly to the configuartion page, you'll need to change the lines
 ```javascript
-var agency = "283";
 var identifier = "";
+var agency = "283";
 ```
 to your respective agency id and Mashape key.
 

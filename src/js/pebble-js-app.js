@@ -1,4 +1,11 @@
 /*
+* NOTE: THE VARIABLE BELOW NEEDS A MASHAPE IDENTIFIER TO WORK.
+* If you want to use this code in your own Transloc bus app, you need your own identifier
+* To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
+*/
+var identifier = "";
+var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
+/*
  * Function to get the arrival time estimate for the given route stop combination.
  */
 function getTimeEstimate(route, stop) {
@@ -11,13 +18,7 @@ function getTimeEstimate(route, stop) {
 		}
 		// Get in touch with the transloc service for the info.
 		var req = new XMLHttpRequest();
-		req.open('GET', 'https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=283&routes=' + route + '&stops=' + stop);
-		/*
-		 * NOTE: THE VARIABLE BELOW NEEDS A MASHAPE IDENTIFIER TO WORK.
-		 * If you want to use this code in your own Transloc bus app, you need your own identifier
-		 * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
-		 */
-		var identifier = "";
+		req.open('GET', 'https://transloc-api-1-2.p.mashape.com/arrival-estimates.json?agencies=' + agency + '&routes=' + route + '&stops=' + stop);
 		req.setRequestHeader("X-Mashape-Authorization", identifier);
 		req.onload = function(e) {
 			if (req.readyState == 4 && req.status == 200) {
@@ -71,7 +72,7 @@ Pebble.addEventListener("appmessage",
  */
 Pebble.addEventListener("showConfiguration",
 	function(e) {
-		var config_url = "http://tjstein.me/urbuses/urbuses_settings.html";
+		var config_url = "http://tjstein.me/urbuses/urbuses_settings.html"; // Change this URL to the URL of your own configuration page.
 		if (window.localStorage.getItem("presets") !== null) {
 			var options = encodeURIComponent(window.localStorage.getItem("presets"));
 			config_url = config_url + "?" + options;

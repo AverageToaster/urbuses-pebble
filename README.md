@@ -52,7 +52,8 @@ The uuid, shortName, longName, companyName, versionCode, and versionLabel will a
 
 Everything else you will need to add to your appinfo.json file:
 ```json
-"capabilities": [ "configurable" ],
+{
+  "capabilities": [ "configurable" ],
   "watchapp": {
     "watchface": false
   },
@@ -74,6 +75,7 @@ Everything else you will need to add to your appinfo.json file:
       }
     ]
   }
+}
 ```
 ## wscript
 Another auto-generated file, don't copy this at all. I don't even know why I have it here. I'll delete it eventually.

@@ -14,7 +14,7 @@ var routes_stops = [];
  * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
  */
 var identifier = "";
-
+var agency = "283"; // University of Rochester's agency id. Change this to whatever agency you are using.
 window.onload = function(){
 	//Set up the onchange and onclick functions.
 	document.getElementById("save_num").onchange = save_num_change;
@@ -24,7 +24,7 @@ window.onload = function(){
 	document.getElementById("cancel").onclick = cancel;
 	//Start the request to load the routes and stops for University of Rochester.
 	var req = new XMLHttpRequest();
-	var text = 'https://transloc-api-1-2.p.mashape.com/routes.json?agencies=283';
+	var text = 'https://transloc-api-1-2.p.mashape.com/routes.json?agencies=' + agency;
 	req.open('GET',text);
 	
 	req.setRequestHeader("X-Mashape-Authorization", identifier)
@@ -43,7 +43,7 @@ window.onload = function(){
 			  		}
 			  	}
 			  	var req2 = new XMLHttpRequest();
-			  	text = 'https://transloc-api-1-2.p.mashape.com/stops.json?agencies=283';
+			  	text = 'https://transloc-api-1-2.p.mashape.com/stops.json?agencies=' + agency;
 				req2.open('GET',text);
 				req2.setRequestHeader("X-Mashape-Authorization",identifier);
 				req2.onload = function(e){

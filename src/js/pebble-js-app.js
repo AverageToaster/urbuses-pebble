@@ -118,6 +118,8 @@ Pebble.addEventListener("webviewclosed",
 		sendStuff(dict, 1);
 	});
 
+
+var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 /*
  * As the app can't handle more than one response at a time, this function uses the callback function of the
  * sendAppMessage function to recursively send each preset to the app.
@@ -131,11 +133,20 @@ function sendStuff(dict, i) {
 		if (dict[i] !== undefined) {
 			Pebble.sendAppMessage(dict[i],
 				function(e) {
+					attempts = 0;
 					j = j + 1;
 					sendStuff(dict, j);
 				},
 				function(e) {
-					console.log("Settings feedback failed!");
+					console.log("ERROR: " + e.error.message);
+					if (attempts > 5){
+						console.log("Attempting to send again.");
+						attempts++;
+						sendStuff(dict, j);
+					}
+					else{
+						console.log("Too many Nacks. Giving up.");
+					}
 				});
 		}
 		// Even if dict[i] doesn't exist, they may have set other presets.

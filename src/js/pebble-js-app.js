@@ -5,6 +5,7 @@
 */
 var identifier = "";
 var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
+var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 /*
  * Function to get the arrival time estimate for the given route stop combination.
  */
@@ -37,15 +38,35 @@ function getTimeEstimate(route, stop) {
 						dict["CURRENT_VIEW_TIME"] = minutes;
 					}
 					// Send the response.
-					Pebble.sendAppMessage(dict);
+					attempts = 0;
+					sendETA(dict);
 				}
 			}
 		};
 		req.send();
 	}
-	/*
-	 * Listener and function called when the app first connects the phone.
-	 */
+
+function sendETA(dict){
+	Pebble.sendAppMessage(dict,
+		function(e){
+			console.log("Successfully sent ETA");
+		},
+		function(e){
+			console.log("ERROR: " + e.error.message);
+			if (attempts < 5){
+				attempts++;
+				console.log("Attempting to send again.");
+				sendETA(dict);
+			}
+			else{
+				console.log("Too many Nacks. Giving up.");
+			}
+		})
+}
+
+/*
+ * Listener and function called when the app first connects the phone.
+ */
 Pebble.addEventListener("ready",
 	function(e) {
 		// App is connected to the phone.
@@ -115,11 +136,11 @@ Pebble.addEventListener("webviewclosed",
 				dict[i] = dict2;
 			}
 		}
+		attempts = 0;
 		sendStuff(dict, 1);
 	});
 
 
-var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 /*
  * As the app can't handle more than one response at a time, this function uses the callback function of the
  * sendAppMessage function to recursively send each preset to the app.
@@ -139,7 +160,7 @@ function sendStuff(dict, i) {
 				},
 				function(e) {
 					console.log("ERROR: " + e.error.message);
-					if (attempts > 5){
+					if (attempts < 5){
 						console.log("Attempting to send again.");
 						attempts++;
 						sendStuff(dict, j);

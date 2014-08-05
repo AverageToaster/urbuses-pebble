@@ -5,7 +5,7 @@
   "companyName": "violentsquid",
   "capabilities": [ "configurable" ],
   "versionCode": 1,
-  "versionLabel": "1.0.6",
+  "versionLabel": "1.0.7",
   "watchapp": {
     "watchface": false
   },

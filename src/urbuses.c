@@ -29,7 +29,6 @@ static char stop_buffer[64];
 static char route_buffer[64];
 static char minute_text_buffer[32];
 
-
 /*
 * Sends an app_message to the phone to request a time update.
 */
@@ -38,10 +37,12 @@ static void update_time()
 	DictionaryIterator *iter;
 	app_message_outbox_begin(&iter);
 
-	Tuplet route = TupletInteger(PRESET_ROUTE_ID, persist_read_int(current_view*10+PRESET_ROUTE_ID));
-	dict_write_tuplet(iter, &route);
-	Tuplet stop = TupletInteger(PRESET_STOP_ID, persist_read_int(current_view*10+PRESET_STOP_ID));
-	dict_write_tuplet(iter, &stop);
+	char read_route_buffer[64];
+	char read_stop_buffer[64];
+	persist_read_string(current_view*10+PRESET_ROUTE_ID, read_route_buffer, 64);
+	dict_write_cstring(iter, PRESET_ROUTE_ID, read_route_buffer);
+	persist_read_string(current_view*10+PRESET_STOP_ID, read_stop_buffer, 64);
+	dict_write_cstring(iter, PRESET_STOP_ID, read_stop_buffer);
 	app_message_outbox_send();
 }
 
@@ -190,7 +191,7 @@ static void process_tuple(Tuple *t)
 		*/
 		case PRESET_ROUTE_ID:
 			if (value != -1)
-				persist_write_int(most_recent_preset*10+PRESET_ROUTE_ID, value);
+				persist_write_string(most_recent_preset*10+PRESET_ROUTE_ID, string_value);
 			else
 				persist_delete(most_recent_preset*10+PRESET_ROUTE_ID);
 			break;
@@ -202,7 +203,7 @@ static void process_tuple(Tuple *t)
 			break;
 		case PRESET_STOP_ID:
 			if (value != -1)
-				persist_write_int(most_recent_preset*10+PRESET_STOP_ID, value);
+				persist_write_string(most_recent_preset*10+PRESET_STOP_ID, string_value);
 			else
 				persist_delete(most_recent_preset*10+PRESET_STOP_ID);
 			break;
@@ -435,7 +436,6 @@ static void init()
 	window_set_click_config_provider(window, click_config_provider);
 	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
 	window_stack_push(window, true);
-
 }
 
 /*

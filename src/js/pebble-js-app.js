@@ -11,7 +11,7 @@ var attempts = 0; // Variable to make sure we don't get stuck in a loop if we ge
  */
 function getTimeEstimate(route, stop) {
 		// If either the route or the stop are empty, then simply return -1 (no arrival estimate.)
-		if (route == 0 || stop == 0) {
+		if (route == "" || stop == "") {
 			Pebble.sendAppMessage({
 				"CURRENT_VIEW_TIME": -1
 			});
@@ -123,9 +123,9 @@ Pebble.addEventListener("webviewclosed",
 				var dict2 = {};
 				dict2["PRESET_NUMBER"] = i;
 				if (options[i].route_id != 0) {
-					dict2["PRESET_ROUTE_ID"] = parseInt(options[i].route_id);
+					dict2["PRESET_ROUTE_ID"] = options[i].route_id;
 					dict2["PRESET_ROUTE_NAME"] = options[i].route_name;
-					dict2["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
+					dict2["PRESET_STOP_ID"] = options[i].stop_id;
 					dict2["PRESET_STOP_NAME"] = options[i].stop_name;
 				} else {
 					dict2["PRESET_ROUTE_ID"] = -1;

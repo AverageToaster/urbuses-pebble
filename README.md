@@ -3,18 +3,24 @@
 This Pebble Smartwatch application provides up to date time estimates (ETAs) for up to 5 user-customizable stops on any route on the University of Rochester bus system. The app also serves as a template for any organization that utilizes the [TransLoc API](http://transloc.com/), available [here](https://www.mashape.com/transloc/openapi-1-2#!documentation). To see what agencies TransLoc supports, look [here](http://transloc.com/agencies/).
 
 # Whats new?
+* v1.1.0
+  * No longer displays "Preset #" when scrolling to unset preset. Now simply finds the next set preset.
+  * Shows warning page when there are no presets set, prompting the user to go to the Settings page.
+  * 'Clear All Presets' button added to Settings Page, with confirmation. (Don't want people accidentally clearing their presets.
+  * Shows error page when app detects broken persistent storage.
 * v1.0.6
   * inital release
 
 # Are you planning any new features?
-- [ ] 'Remove All Presets' button to configuration page.
+- [X] 'Remove All Presets' button to configuration page.
 - [ ] Ability to set a 'home' stop.
 - [ ] Additional optional preset that displays the closest stop and next arriving line.
 - [ ] Additional optional preset that displays the closest stop that connects with home stop.
+- [ ] Separate menu that displays all stops and the next X number of arriving lines.
 
 # Can I use this project?
 Yep. To use this project with your own TransLoc agency, there is only a few things you need to change and understand about the Pebble application.
-## urbuses_settings HTML and JavaScript
+## configuration/urbuses_settings.html/js
 To allow for user customization, Pebble applications use an HTML page for configuration. This page must be a publicly visible page, so you'll have to host these files somewhere.
 
 To use another agency and supply the user with correct bus routes and stops, you will have to change the agency in the line

@@ -22,6 +22,8 @@ window.onload = function(){
 	document.getElementById("stop").onchange = stop_change;
 	document.getElementById("submit").onclick = submit;
 	document.getElementById("cancel").onclick = cancel;
+	document.getElementById("clear").onclick = clear;
+	document.getElementById("nevermind").onclick = nevermind;
 	//Start the request to load the routes and stops for University of Rochester.
 	var req = new XMLHttpRequest();
 	var text = 'https://transloc-api-1-2.p.mashape.com/routes.json?agencies=' + agency;
@@ -248,4 +250,50 @@ function submit(){
 */
 function cancel(){
 	document.location = "pebblejs://close#";
+}
+
+/*
+* First of the clear all buttons. Sets first warning text and activates the never mind button.
+*/
+
+function clear(){
+	$("#warning").text("Warning: this button clears all presets.");
+	document.getElementById("clear").onclick = clear2;
+	$("#nevermind").show();
+}
+
+/*
+* Second of the clear all buttons. Updates the warning and sets the final clear function.
+*/
+function clear2(){
+	$("#warning").text("Are you sure you want to clear all presets?");
+	document.getElementById("clear").onclick = clearConfirmed;
+}
+
+/*
+* Generates the clearing dictionary and sends it back to the pebble.
+*/
+function clearConfirmed(){
+	$("#warning").text("Deleting presets...");
+	var options = {};
+	var sub_opt = {};
+	for (var i = 0; i < presets_ids.length; i++){
+		sub_opt = {};
+		sub_opt["route_id"] = 0;
+		sub_opt["route_name"] = 0;
+		sub_opt["stop_id"] = 0;
+		sub_opt["stop_name"] = 0;
+		options[i+1] = sub_opt;
+	}
+	var location = "pebblejs://close#" + encodeURIComponent(JSON.stringify(options));
+	document.location = location;
+}
+
+/*
+* Cancels the clear all buttons. Hides the nevermind button afterwards.
+*/
+function nevermind(){
+	$("#warning").text("");
+	document.getElementById("clear").onclick = clear;
+	$("#nevermind").hide();
 }

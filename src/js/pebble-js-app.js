@@ -5,12 +5,13 @@
 */
 var identifier = "";
 var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
+var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 /*
  * Function to get the arrival time estimate for the given route stop combination.
  */
 function getTimeEstimate(route, stop) {
 		// If either the route or the stop are empty, then simply return -1 (no arrival estimate.)
-		if (route == 0 || stop == 0) {
+		if (route == "" || stop == "") {
 			Pebble.sendAppMessage({
 				"CURRENT_VIEW_TIME": -1
 			});
@@ -37,15 +38,35 @@ function getTimeEstimate(route, stop) {
 						dict["CURRENT_VIEW_TIME"] = minutes;
 					}
 					// Send the response.
-					Pebble.sendAppMessage(dict);
+					attempts = 0;
+					sendETA(dict);
 				}
 			}
 		};
 		req.send();
 	}
-	/*
-	 * Listener and function called when the app first connects the phone.
-	 */
+
+function sendETA(dict){
+	Pebble.sendAppMessage(dict,
+		function(e){
+			console.log("Successfully sent ETA");
+		},
+		function(e){
+			console.log("ERROR: " + e.error.message);
+			if (attempts < 5){
+				attempts++;
+				console.log("Attempting to send again.");
+				sendETA(dict);
+			}
+			else{
+				console.log("Too many Nacks. Giving up.");
+			}
+		})
+}
+
+/*
+ * Listener and function called when the app first connects the phone.
+ */
 Pebble.addEventListener("ready",
 	function(e) {
 		// App is connected to the phone.
@@ -102,9 +123,9 @@ Pebble.addEventListener("webviewclosed",
 				var dict2 = {};
 				dict2["PRESET_NUMBER"] = i;
 				if (options[i].route_id != 0) {
-					dict2["PRESET_ROUTE_ID"] = parseInt(options[i].route_id);
+					dict2["PRESET_ROUTE_ID"] = options[i].route_id;
 					dict2["PRESET_ROUTE_NAME"] = options[i].route_name;
-					dict2["PRESET_STOP_ID"] = parseInt(options[i].stop_id);
+					dict2["PRESET_STOP_ID"] = options[i].stop_id;
 					dict2["PRESET_STOP_NAME"] = options[i].stop_name;
 				} else {
 					dict2["PRESET_ROUTE_ID"] = -1;
@@ -115,8 +136,10 @@ Pebble.addEventListener("webviewclosed",
 				dict[i] = dict2;
 			}
 		}
+		attempts = 0;
 		sendStuff(dict, 1);
 	});
+
 
 /*
  * As the app can't handle more than one response at a time, this function uses the callback function of the
@@ -131,11 +154,20 @@ function sendStuff(dict, i) {
 		if (dict[i] !== undefined) {
 			Pebble.sendAppMessage(dict[i],
 				function(e) {
+					attempts = 0;
 					j = j + 1;
 					sendStuff(dict, j);
 				},
 				function(e) {
-					console.log("Settings feedback failed!");
+					console.log("ERROR: " + e.error.message);
+					if (attempts < 5){
+						console.log("Attempting to send again.");
+						attempts++;
+						sendStuff(dict, j);
+					}
+					else{
+						console.log("Too many Nacks. Giving up.");
+					}
 				});
 		}
 		// Even if dict[i] doesn't exist, they may have set other presets.

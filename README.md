@@ -77,7 +77,5 @@ Everything else you will need to add to your appinfo.json file:
   }
 }
 ```
-## wscript
-Another auto-generated file, don't copy this at all. I don't even know why I have it here. I'll delete it eventually.
 ## What else?
 That's it! Just make sure to adhere to the license when using this project. 

@@ -1,5 +1,7 @@
 #include "pebble.h"
 
+// Set the number of presets.
+#define NUM_OF_PRESETS 5
 // Cases for the received key from the phone.
 enum
 {
@@ -28,21 +30,117 @@ static char time_buffer[sizeof(" -- ")];
 static char stop_buffer[64];
 static char route_buffer[64];
 static char minute_text_buffer[32];
+// Array for checking which presets exist without having to access persistant storage multiple times.
+static bool isset[NUM_OF_PRESETS];
+// Boolean variable for going from no preset display to preset display.
+static bool not_preset_layout;
+static bool persist_storage_working = true;
 
-
+/*
+ * Function to check if any presets are set.
+ * Array is set during appmessage reception and on init.
+ */
+static bool presets_exist()
+{
+	for (int i = 0; i < NUM_OF_PRESETS; i++)
+		if (isset[i])
+			return true;
+	return false;
+}
+/*
+ * Function to test if persist storage is working.
+ * If not, then set the global boolean to false. 
+ * Display of error is shown elsewhere.
+ */
+static void test_if_persist_works()
+{
+	int test = persist_write_bool(100, true);
+	if (test < 0)
+		persist_storage_working = false;
+}
+/*
+* Function to update time and minute text layers to show that the time is refreshing.
+*/
+static void refreshing_text_layer()
+{
+	if (presets_exist())
+	{
+		snprintf(time_buffer, sizeof(" XX "), " -- ");
+		text_layer_set_text(time_layer, (char*) &time_buffer);
+		snprintf(minute_text_buffer, 32, "Refreshing...");
+		text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
+	}
+}
 /*
 * Sends an app_message to the phone to request a time update.
 */
 static void update_time()
 {
+	refreshing_text_layer();
 	DictionaryIterator *iter;
 	app_message_outbox_begin(&iter);
 
-	Tuplet route = TupletInteger(PRESET_ROUTE_ID, persist_read_int(current_view*10+PRESET_ROUTE_ID));
-	dict_write_tuplet(iter, &route);
-	Tuplet stop = TupletInteger(PRESET_STOP_ID, persist_read_int(current_view*10+PRESET_STOP_ID));
-	dict_write_tuplet(iter, &stop);
+	char read_route_buffer[64];
+	char read_stop_buffer[64];
+	persist_read_string(current_view*10+PRESET_ROUTE_ID, read_route_buffer, 64);
+	dict_write_cstring(iter, PRESET_ROUTE_ID, read_route_buffer);
+	persist_read_string(current_view*10+PRESET_STOP_ID, read_stop_buffer, 64);
+	dict_write_cstring(iter, PRESET_STOP_ID, read_stop_buffer);
 	app_message_outbox_send();
+}
+/*
+ * Function to display when persistant storage is broken.
+ */
+static void persist_storage_broken()
+{
+	text_layer_set_size(stop_layer, GSize(layer_get_bounds(text_layer_get_layer(stop_layer)).size.w, 52));
+	snprintf(stop_buffer, 64, "Persist Storage Broken.");
+	text_layer_set_text(stop_layer, (char*) &stop_buffer);
+	layer_set_frame(text_layer_get_layer(route_layer), GRect(0,47, (layer_get_bounds(text_layer_get_layer(route_layer))).size.w, 52));
+	snprintf(route_buffer, 64, "Please Factory Reset Watch.");
+	text_layer_set_text(route_layer, (char*) &route_buffer);
+	snprintf(time_buffer, sizeof(" "), " ");
+	layer_set_frame(text_layer_get_layer(time_layer), GRect(0, 99, (layer_get_bounds(text_layer_get_layer(time_layer))).size.w, 0));
+	text_layer_set_text(time_layer, (char*) &time_buffer);
+	snprintf(minute_text_buffer, 32, "For Info: bit.ly/ urbpebstorage");
+	layer_set_frame(text_layer_get_layer(minute_text_layer), GRect(0,100,(layer_get_bounds(text_layer_get_layer(minute_text_layer))).size.w, 52));
+	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
+}
+/*
+ * Function to display when user has no presets. 
+ * Reorganizes the text layers to display nicely.
+ */
+static void no_presets_text()
+{
+	not_preset_layout = true;
+	text_layer_set_size(stop_layer, GSize(layer_get_bounds(text_layer_get_layer(stop_layer)).size.w, 28));
+	snprintf(stop_buffer, 64, "No Presets Set.");
+	text_layer_set_text(stop_layer, (char*) &stop_buffer);
+	layer_set_frame(text_layer_get_layer(route_layer), GRect(0,23, (layer_get_bounds(text_layer_get_layer(route_layer))).size.w, 52));
+	snprintf(route_buffer, 64, "Please set presets via settings page.");
+	text_layer_set_text(route_layer, (char*) &route_buffer);
+	snprintf(time_buffer, sizeof(":("), ":(");
+	text_layer_set_text(time_layer, (char*) &time_buffer);
+	snprintf(minute_text_buffer, 32, " ");
+	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
+}
+/*
+ * Function to fix the layout to return to normal ETA display after no_presets_text has been called.
+ */
+static void fix_layout()
+{
+	not_preset_layout = false;
+	text_layer_set_size(stop_layer, GSize(layer_get_bounds(text_layer_get_layer(stop_layer)).size.w,52));
+	layer_set_frame(text_layer_get_layer(route_layer), GRect(0,47, (layer_get_bounds(text_layer_get_layer(route_layer))).size.w, 28));
+	// move current view to the first available preset.
+	for (int i = 1; i <= NUM_OF_PRESETS; i++)
+	{
+		if (isset[i])
+		{
+			current_view = i;
+			break;
+		}
+	}
 }
 
 /*
@@ -50,64 +148,74 @@ static void update_time()
 */
 static void update_text_layers()
 {
-	/*
-	* If the Stop/Route exists for the current view, then load it into the buffer. 
-	* If not, then load the default "STOP PRESET #" text.
-	*/
-	if (persist_exists(current_view*10+PRESET_STOP_NAME))
+	// First check and redirect to error screens if necessary.
+	if (!persist_storage_working)
+		persist_storage_broken();
+	else if (!presets_exist())
+		no_presets_text();
+	else{
+		// Check to see if we need to fix the layout if coming from no_presets_text.
+		if (not_preset_layout)
+			fix_layout();
+		// Set the current view's stop name into the buffer.
 		persist_read_string(current_view*10+PRESET_STOP_NAME, stop_buffer, 64);
-	else
-		snprintf(stop_buffer, 64, "STOP PRESET %d", current_view);
-	// Update the text layer with the new text.
-	text_layer_set_text(stop_layer, (char*) &stop_buffer);
+		// Update the text layer with the new text.
+		text_layer_set_text(stop_layer, (char*) &stop_buffer);
 
-	// Same as above.
-	if (persist_exists(current_view*10+PRESET_ROUTE_NAME))
+		// Same as above.
 		persist_read_string(current_view*10+PRESET_ROUTE_NAME, route_buffer, 64);
-	else
-		snprintf(route_buffer, 64, "ROUTE PRESET %d", current_view);
-	text_layer_set_text(route_layer, (char*) &route_buffer);
+		text_layer_set_text(route_layer, (char*) &route_buffer);
+		update_time();	
+	}
 }
 
-/*
-* Function to update time and minute text layers to show that the time is refreshing.
-*/
-static void refreshing_text_layer()
-{
-	snprintf(time_buffer, sizeof(" XX "), " -- ");
-	text_layer_set_text(time_layer, (char*) &time_buffer);
-	snprintf(minute_text_buffer, 32, "Refreshing...");
-	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
-}
+
 
 /*
 * Function to handle the up click while inside the app. 
-* When the user hits up, move the current view up by 1, looping around at 6 to 1,
+* When the user hits up, move the current view up to the next available preset, looping around at NUM_OF_PRESET+1 to 1,
 * then update the text layers and current time for the new preset. 
 */
 static void up_click_handler(ClickRecognizerRef recognizer, void* context)
 {
-	current_view++;
-	if (current_view == 6)
-		current_view = 1;
-	update_text_layers();
-	refreshing_text_layer();
-	update_time();
+	if (persist_storage_working && presets_exist()){
+		int next_view = current_view;
+		do
+		{
+			next_view++;
+			if (next_view == NUM_OF_PRESETS+1)
+				next_view = 1;
+			if (next_view == current_view)
+				break;
+		}
+		while (!isset[next_view-1]);
+		current_view = next_view;
+		update_text_layers();
+	}
 }
 
 /*
 * Function to handle the down click while inside the app. 
-* When the user hits down, move the current view down by 1, looping around at 0 to 5,
+* When the user hits down, move the current view down to the next available preset, looping around at 0 to NUM_OF_PRESETS,
 * then update the text layers and current time for the new preset. 
 */
 static void down_click_handler(ClickRecognizerRef recognizer, void* context)
 {
-	current_view--;
-	if (current_view == 0)
-		current_view = 5;
-	update_text_layers();
-	refreshing_text_layer();
-	update_time();
+	if (persist_storage_working && presets_exist())
+	{
+		int next_view = current_view;
+		do
+		{
+			next_view--;
+			if (next_view == 0)
+				next_view = NUM_OF_PRESETS;
+			if (next_view == current_view)
+				break;
+		}
+		while (!isset[next_view-1]);
+		current_view = next_view;
+		update_text_layers();
+	}
 }
 
 /*
@@ -116,8 +224,8 @@ static void down_click_handler(ClickRecognizerRef recognizer, void* context)
 */
 static void select_click_handler(ClickRecognizerRef recognizer, void* context)
 {
-	refreshing_text_layer();
-	update_time();
+	if (persist_storage_working && presets_exist())
+		refreshing_text_layer();
 }
 
 /*
@@ -131,7 +239,9 @@ static void process_tuple(Tuple *t)
 	int value = t->value->int32;	
 	char string_value[64];
 	strcpy(string_value, t->value->cstring);
-	switch(key){
+	int bytes = 1;
+	switch(key)
+	{
 		case CURRENT_VIEW_TIME:
 			/*
 			* received a time update. If its above 0, simply put the time in the
@@ -159,10 +269,13 @@ static void process_tuple(Tuple *t)
 		  	*/
 			else if (value == -1)
 			{
-				snprintf(time_buffer, sizeof (" -- "), " -- ");
-				text_layer_set_text(time_layer, (char*) &time_buffer);
-				snprintf(minute_text_buffer, 32, "No Arrival Times");
-				text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);	
+				if (presets_exist())
+				{
+					snprintf(time_buffer, sizeof (" -- "), " -- ");
+					text_layer_set_text(time_layer, (char*) &time_buffer);
+					snprintf(minute_text_buffer, 32, "No Arrival Times");
+					text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);	
+				}
 			}
 			/*
 			* Last case is 0, for which the words "NOW" are simply shown.
@@ -189,36 +302,62 @@ static void process_tuple(Tuple *t)
 		* (the logic behind number*10+IDENT means that the range 12-15 will be the information for preset 1).
 		*/
 		case PRESET_ROUTE_ID:
-			if (value != -1)
-				persist_write_int(most_recent_preset*10+PRESET_ROUTE_ID, value);
-			else
+			/*
+			 * This is where the global boolean array of available presets is changed during the life of the app.
+			 * If the preset is added during an appmessage, set it true to mark it available,
+			 * otherwise mark it false.
+			 */
+			if (value != -1){
+				bytes = persist_write_string(most_recent_preset*10+PRESET_ROUTE_ID, string_value);
+				isset[most_recent_preset-1] = true;
+			}
+			else{
 				persist_delete(most_recent_preset*10+PRESET_ROUTE_ID);
+				isset[most_recent_preset-1] = false;
+			}
 			break;
 		case PRESET_ROUTE_NAME:
 			if (value != -1)
-				persist_write_string(most_recent_preset*10+PRESET_ROUTE_NAME, string_value);
+				bytes = persist_write_string(most_recent_preset*10+PRESET_ROUTE_NAME, string_value);
 			else
 				persist_delete(most_recent_preset*10+PRESET_ROUTE_NAME);
 			break;
 		case PRESET_STOP_ID:
 			if (value != -1)
-				persist_write_int(most_recent_preset*10+PRESET_STOP_ID, value);
+				bytes = persist_write_string(most_recent_preset*10+PRESET_STOP_ID, string_value);
 			else
 				persist_delete(most_recent_preset*10+PRESET_STOP_ID);
 			break;
 		case PRESET_STOP_NAME:
 			if (value != -1)
-				persist_write_string(most_recent_preset*10+PRESET_STOP_NAME, string_value);
-			else
+				bytes = persist_write_string(most_recent_preset*10+PRESET_STOP_NAME, string_value);
+			else{
 				persist_delete(most_recent_preset*10+PRESET_STOP_NAME);
-			// If this preset update was the current screen, update the current screen to reflect the changes.
-			if (most_recent_preset == current_view)
-			{
-				update_text_layers();
-				refreshing_text_layer();
-				update_time();
+				/*
+				 * If there are still presets available when the current view is deleted,
+				 * search for the next available one and move to it.
+				 */
+				if (presets_exist() && most_recent_preset == current_view){
+					for (int i = current_view-1; i < NUM_OF_PRESETS; i++){
+						if (isset[i]){
+							current_view = i;
+							break;
+						}
+					}
+					update_text_layers();
+				}
 			}
+			// If this preset update was the current screen, update the current screen to reflect the changes.
 			break;
+	}
+	/*
+	 * If at any point during these writes to persistant storage a negative number is returned,
+	 * Then that indicated that persistant storage is broken and the error screen needs to be shown.
+	 */
+	if (bytes <= 0){
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Error writing");
+		persist_storage_working = false;
+		persist_storage_broken();
 	}
 }
 /*
@@ -227,24 +366,21 @@ static void process_tuple(Tuple *t)
 */
 static void fix_dict_order(DictionaryIterator *iter)
 {
-	Tuple *tArr[5];
+	Tuple *tArr[NUM_OF_PRESETS];
 	Tuple *t = dict_read_first(iter);
 
-	if (t){
+	if (t)
 		tArr[(t->key)-1] = t;
-	}
 	while (t != NULL)
 	{
 		t = dict_read_next(iter);
 		if (t)
-		{
 			tArr[(t->key)-1] = t;
-		}
 	}
 
-	for (int i = 0; i < 5; i++){
+	for (int i = 0; i < NUM_OF_PRESETS; i++)
 		process_tuple(tArr[i]);
-	}
+	update_text_layers();
 }
 
 /*
@@ -259,13 +395,9 @@ static void in_received_handler(DictionaryIterator *iter, void *context)
 	if (t)
 	{
 		if (t->key == 0)
-		{
 			process_tuple(t);
-		}
 		else
-		{
 			fix_dict_order(iter);
-		}
 	}
 }
 
@@ -309,7 +441,8 @@ static void in_dropped_handler(AppMessageResult reason, void *context)
 static void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) 
 {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "App Message Failed to Send! %d : %s", reason, translate_error(reason));
-	if (reason == APP_MSG_SEND_TIMEOUT){
+	if (reason == APP_MSG_SEND_TIMEOUT)
+	{
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Resending App Message.");
 		update_time();
 	}
@@ -342,12 +475,13 @@ static void app_message_init()
 */
 static void window_load(Window *window)
 {
+	not_preset_layout = false;
 	// Get window layer for adding the text layers and bounds for sizing.
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_frame(window_layer);
 
 	// Create the layer by giving it a GRect for size.
-	stop_layer = text_layer_create(GRect(0, 0, bounds.size.w /* width */, 52 /* height */));
+	stop_layer = text_layer_create(GRect(0, -5, bounds.size.w /* width */, 52 /* height */));
 	// Set the font. Went with 24 Bold so its readable, yet small enough to fit the whole stop.
 	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	// Align the text. Went with center for looks.
@@ -356,18 +490,16 @@ static void window_load(Window *window)
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
 	
 	// Same with route.
-	route_layer = text_layer_create(GRect(0,52, bounds.size.w, 28));
+	route_layer = text_layer_create(GRect(0,47, bounds.size.w, 28));
 	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
 
-	// Update the text for Stop and Route.
-	update_text_layers();
 
 	// Set the char* buffer for time.
 	snprintf(time_buffer, sizeof(" XX "), " -- ");
 	// Same deal with time text layer.
-	time_layer = text_layer_create(GRect(0,80, bounds.size.w, 42));
+	time_layer = text_layer_create(GRect(0,75, bounds.size.w, 48));
 	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 	// Actually set the text in this method for time_layer.
 	text_layer_set_text(time_layer, (char*) &time_buffer);
@@ -376,11 +508,14 @@ static void window_load(Window *window)
 
 	// And create and add the final layer, the "minutes" text under the time.
 	snprintf(minute_text_buffer, 32, "minutes");
-	minute_text_layer = text_layer_create(GRect(0,122, bounds.size.w, 28));
+	minute_text_layer = text_layer_create(GRect(0,123, bounds.size.w, 28));
 	text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
 	text_layer_set_font(minute_text_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(minute_text_layer, GTextAlignmentCenter);
 	layer_add_child(window_layer, text_layer_get_layer(minute_text_layer));
+
+	// Update the text for Stop and Route.
+	update_text_layers();
 
 }
 
@@ -389,31 +524,28 @@ static void window_load(Window *window)
 */
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
+	// If there are no presets or persistant storage is broken, we don't want to have anything happening in here.
+	if (presets_exist() && persist_storage_working){
 	// Every 10 minutes, it refreshes the time from the phone.
-	if (tick_time->tm_min % 10 == 0)
-	{
-		refreshing_text_layer();
-		update_time();
-	}
-	else
-	{
-		// Lower the current time_estime.
-		time_estimate--;
-		// If the app just loaded, or have gone into the negative, refresh the time.
-		if (time_estimate <= 0)
-		{
-			refreshing_text_layer();
+		if (tick_time->tm_min % 10 == 0)
 			update_time();
-		}
-		// Otherwise, just update the time and minute layers with the new time estimate.
 		else
 		{
-			snprintf(time_buffer, sizeof(" XX "), " %d ", time_estimate);
-			text_layer_set_text(time_layer, (char*) &time_buffer);
-			if (time_estimate == 1)
+			// Lower the current time_estime.
+			time_estimate--;
+			// If the app just loaded, or have gone into the negative, refresh the time.
+			if (time_estimate <= 0)
+				update_time();
+			// Otherwise, just update the time and minute layers with the new time estimate.
+			else
 			{
-				snprintf(minute_text_buffer, 32, "minute");
-				text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
+				snprintf(time_buffer, sizeof(" XX "), " %d ", time_estimate);
+				text_layer_set_text(time_layer, (char*) &time_buffer);
+				if (time_estimate == 1)
+				{
+					snprintf(minute_text_buffer, 32, "minute");
+					text_layer_set_text(minute_text_layer, (char*) &minute_text_buffer);
+				}
 			}
 		}
 	}
@@ -425,17 +557,36 @@ static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 */
 static void init()
 {
-	if (persist_exists(CURRENT_VIEW_PERSIST))
-		current_view = persist_read_int(CURRENT_VIEW_PERSIST);
-	window = window_create();
-	window_set_window_handlers(window, (WindowHandlers){
-		.load = window_load
-	});
-	app_message_init();
-	window_set_click_config_provider(window, click_config_provider);
-	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
-	window_stack_push(window, true);
-
+	// Start off by checking that persistant storage works. Nothing's going to happen if it doesnt.
+	test_if_persist_works();
+	if (persist_storage_working)
+	{
+		if (persist_exists(CURRENT_VIEW_PERSIST))
+			current_view = persist_read_int(CURRENT_VIEW_PERSIST);
+		// Initialize the available presets from persistant storage.
+		for (int i = 0; i < NUM_OF_PRESETS; i++){
+			if (persist_exists((i+1)*10+PRESET_ROUTE_ID))
+				isset[i] = true;
+			else
+				isset[i] = false;
+		}
+		window = window_create();
+		window_set_window_handlers(window, (WindowHandlers){
+			.load = window_load
+		});
+		app_message_init();
+		window_set_click_config_provider(window, click_config_provider);
+		tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
+		window_stack_push(window, true);	
+	}
+	else{
+		// If peristant storage is broken, we just want to create the window and display the error.
+		window = window_create();
+		window_set_window_handlers(window, (WindowHandlers){
+			.load = window_load
+		});
+		window_stack_push(window, true);
+	}
 }
 
 /*

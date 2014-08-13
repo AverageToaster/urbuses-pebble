@@ -12,8 +12,16 @@ typedef struct PresetBlock {
 static LinkedRoot* presets = NULL;
 
 void presets_init(void){
-	mqueue_register_handler("ETA", eta_message_handler);
+	mqueue_register_handler("PRESET_ETA", eta_handler);
 	presets = linked_list_create_root();
+	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
+}
+
+void presets_deinit(){
+	tick_timer_service_unsubscribe();
+	presets_save();
+	presets_clear();
+	free(presets);
 }
 
 Preset* presets_get(int pos){
@@ -87,4 +95,34 @@ void presets_save(void){
 		block++;
 	}
 	return 0;
+}
+
+void tick_callback(struct tm *tick_time, TimeUnits units_changed)
+{
+	if (tick_time->tm_min % 10 == 0)
+		send_all_eta_req();
+	else
+	{
+		decrement_etas();
+	}
+}
+
+void decrement_etas(){
+	for (int i = 0; i < presets_get_count(); i++){
+		Preset *temp = presets_get(i);
+		
+		temp->eta -= 1;
+		if (temp->eta < 0)
+			send_eta_req(temp);
+	}
+}
+
+static void eta_handler(char* operation, char* data){
+	if (strcmp(operation, "PRESET_ETA") == 0){
+		process_eta_data(data);
+	}
+}
+
+static void process_eta_data(char* data){
+	
 }

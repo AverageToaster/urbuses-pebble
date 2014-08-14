@@ -122,6 +122,7 @@ static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResul
 }
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering in");
   char* group = dict_find(iterator, KEY_GROUP)->value->cstring;
   char* operation = dict_find(iterator, KEY_OPERATION)->value->cstring;
   char* data = dict_find(iterator, KEY_DATA)->value->cstring;

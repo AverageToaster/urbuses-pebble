@@ -3,6 +3,7 @@
 #include "preset.h"
 #include "windows/window-presets.h"
 #include "windows/window-preset.h"
+#include "libs/message-queue/message-queue.h"
 
 // Set the number of presets.
 #define NUM_OF_PRESETS 5
@@ -591,7 +592,9 @@ static void init()
 	// 	});
 	// 	window_stack_push(window, true);
 	// }
+	mqueue_init();
 	presets_init();
+	presets_restore();
 	window_presets_init();
 	window_presets_show();
 }
@@ -611,7 +614,7 @@ static void deinit()
 	// persist_write_int(CURRENT_VIEW_PERSIST, current_view);
 
 	// tick_timer_service_unsubscribe();
-
+	presets_deinit();
 	window_presets_destroy();
 }
 

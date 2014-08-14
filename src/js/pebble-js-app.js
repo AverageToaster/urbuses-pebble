@@ -9,7 +9,7 @@ var attempts = 0; // Variable to make sure we don't get stuck in a loop if we ge
 /*
  * Function to get the arrival time estimate for the given route stop combination.
  */
-function getTimeEstimate(route, stop) {
+function getTimeEstimate(stop, route) {
 		// If either the route or the stop are empty, then simply return -1 (no arrival estimate.)
 		if (route == "" || stop == "") {
 			Pebble.sendAppMessage({
@@ -26,16 +26,19 @@ function getTimeEstimate(route, stop) {
 				if (req.status == 200) {
 					// When ready, create a dictionary to return.
 					var dict = {};
+					dict.group="PRESET";
+					dict.operation="PRESET_ETA";
+					dict.data = stop+"|"+route+"|";
 					var data = JSON.parse(req.responseText);
 					// If there's no arrival data, then reply with -1.
 					if (data.data[0] === undefined || data.data[0].arrivals[0] === undefined) {
-						dict["CURRENT_VIEW_TIME"] = -1;
+						dict.data = "NO ETA";
 					} else {
 						// Otherwise, calculate the minutes difference from now to the arrival estimate, and reply with that.
 						var arrival = new Date(data.data[0].arrivals[0].arrival_at);
 						var now = new Date();
 						var minutes = Math.floor(((arrival - now) / 1000) / 60);
-						dict["CURRENT_VIEW_TIME"] = minutes;
+						dict.data += minutes;
 					}
 					// Send the response.
 					attempts = 0;
@@ -80,9 +83,12 @@ Pebble.addEventListener("ready",
  */
 Pebble.addEventListener("appmessage",
 	function(e) {
-		var route = e.payload["PRESET_ROUTE_ID"];
-		var stop = e.payload["PRESET_STOP_ID"];
-		getTimeEstimate(route, stop);
+		if (e.payload.group === "PRESET"){
+			if (e.payload.operation === "PRESET_ETA"){
+				var split = e.payload.data.split("|");
+				getTimeEstimate(split[0], split[1]);
+			}
+		}
 	});
 
 /*
@@ -118,26 +124,30 @@ Pebble.addEventListener("webviewclosed",
 		var options = JSON.parse(decodeURIComponent(e.response));
 		window.localStorage.setItem("presets", JSON.stringify(options));
 		var dict = {};
+		var count = 1;
+		var dict2 = {};
+		dict2.group = "PRESET";
+		dict2.operation = "PRESET_CLEAR";
+		dict2.data = "";
+		dict[0] = dict2;
 		for (var i = 1; i <= 5; i++) {
 			if (options[i + ""] !== undefined) {
-				var dict2 = {};
-				dict2["PRESET_NUMBER"] = i;
+				dict2 = {};
 				if (options[i].route_id != 0) {
-					dict2["PRESET_ROUTE_ID"] = options[i].route_id;
-					dict2["PRESET_ROUTE_NAME"] = options[i].route_name;
-					dict2["PRESET_STOP_ID"] = options[i].stop_id;
-					dict2["PRESET_STOP_NAME"] = options[i].stop_name;
-				} else {
-					dict2["PRESET_ROUTE_ID"] = -1;
-					dict2["PRESET_ROUTE_NAME"] = -1;
-					dict2["PRESET_STOP_ID"] = -1;
-					dict2["PRESET_STOP_NAME"] = -1;
+					dict2.group = "PRESET";
+					dict2.operation = "PRESET_SET";
+					dict2.data = options[i].stop_id 
+					+ "|" + options[i].stop_name 
+					+ "|" + options[i].route_id 
+					+ "|" + options[i].route_name;
+					dict[count] = dict2;
+					count++;
 				}
-				dict[i] = dict2;
 			}
 		}
+		console.log("WHAT");
 		attempts = 0;
-		sendStuff(dict, 1);
+		sendStuff(dict, 0);
 	});
 
 
@@ -151,7 +161,7 @@ function sendStuff(dict, i) {
 	if (i > 5 || i < 0) {
 		return;
 	} else {
-		if (dict[i] !== undefined) {
+ 		if (dict[i] !== undefined) {
 			Pebble.sendAppMessage(dict[i],
 				function(e) {
 					attempts = 0;

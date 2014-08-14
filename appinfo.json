@@ -1,7 +1,7 @@
 {
   "uuid": "0367ebb0-4218-4f1b-b372-a3703374c960",
-  "shortName": "urbuses",
-  "longName": "urbuses pebble",
+  "shortName": "UR Buses",
+  "longName": "UR Buses pebble",
   "companyName": "violentsquid",
   "capabilities": [ "configurable" ],
   "versionCode": 1,
@@ -10,12 +10,9 @@
     "watchface": false
   },
   "appKeys": {
-    "CURRENT_VIEW_TIME": 0,
-    "PRESET_NUMBER": 1,
-    "PRESET_ROUTE_ID": 2,
-    "PRESET_ROUTE_NAME": 3,
-    "PRESET_STOP_ID": 4,
-    "PRESET_STOP_NAME": 5
+    "group": 0,
+    "operation": 1,
+    "data": 2
   },
   "resources": {
     "media": [

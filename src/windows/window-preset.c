@@ -5,6 +5,15 @@
 static void window_load(Window *window);
 static void window_unload(Window *window);
 static void click_config_provider(void *ctx);
+static void up_click_handler(ClickRecognizerRef recognizer, void* context);
+static void down_click_handler(ClickRecognizerRef recognizer, void* context);
+static void select_click_handler(ClickRecognizerRef recognizer, void* context);
+static void update_preset_text();
+static void refreshing_text();
+static void send_eta_req();
+static void eta_handler(int pos, int eta);
+static void display_eta(int eta);
+
 
 static Window *window;
 static TextLayer *stop_layer;
@@ -115,11 +124,15 @@ static void up_click_handler(ClickRecognizerRef recognizer, void* context)
 static void down_click_handler(ClickRecognizerRef recognizer, void *context)
 {
 	if (preset_pos == 0)
-		preset_pos = presets_get_count() -1;
+		preset_pos = presets_get_count() - 1;
 	else
 		preset_pos--;
 	preset = presets_get(preset_pos);
 	update_preset_text();
+}
+
+static void select_click_handler(ClickRecognizerRef recognizer, void *context){
+	
 }
 
 static void update_preset_text(){

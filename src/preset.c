@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include "preset.h"
 
 void preset_destroy(Preset *preset){
 	if (!preset) return;

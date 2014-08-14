@@ -1,8 +1,17 @@
 #include <pebble.h>
+#include "presets.h"
 #include "libs/linked-list/linked-list.h"
+#include "libs/message-queue/message-queue.h"
+#include "libs/data-processor/data-processor.h"
+#include "preset.h"
 
 #define STORAGE_PRESET_START 2
 #define PRESET_BLOCK_SIZE 5
+
+static void eta_handler(char* operation, char* data);
+static void process_eta_data(char* data);
+static void process_preset_data(char* data);
+static void tick_callback(struct tm *tick_time, TimeUnits units_changed);
 
 typedef struct PresetBlock {
 	Preset presets[PRESET_BLOCK_SIZE];
@@ -52,12 +61,12 @@ void presets_restore(void){
 	presets_clear();
 
 	if (!persist_exists(STORAGE_PRESET_START)){
-		return 0;
+		return;
 	}
 
 	int block = 0;
 	PresetBlock* presetBlock = malloc(sizeof(PresetBlock));
-	persist_read_data(STORAGE_PRESET_START, presetBlock, sizeOf(PresetBlock));
+	persist_read_data(STORAGE_PRESET_START, presetBlock, sizeof(PresetBlock));
 
 	uint8_t preset_count = presetBlock->count;
 
@@ -72,7 +81,7 @@ void presets_restore(void){
 		presets_add(preset);
 	}
 	free(presetBlock);
-	return 0;
+	return;
 }
 
 void presets_save(void){
@@ -80,7 +89,7 @@ void presets_save(void){
 	uint8_t num_presets = presets_get_count();
 	if (num_presets == 0){
 		persist_delete(STORAGE_PRESET_START);
-		return 0;
+		return;
 	}
 	for (int i = 0; i < num_presets; i+= PRESET_BLOCK_SIZE){
 		PresetBlock *presetBlock = malloc(sizeof(PresetBlock));
@@ -94,35 +103,64 @@ void presets_save(void){
 		free(presetBlock);
 		block++;
 	}
-	return 0;
+	return;
 }
 
-void tick_callback(struct tm *tick_time, TimeUnits units_changed)
-{
-	if (tick_time->tm_min % 10 == 0)
-		send_all_eta_req();
-	else
-	{
-		decrement_etas();
-	}
-}
 
 void decrement_etas(){
 	for (int i = 0; i < presets_get_count(); i++){
 		Preset *temp = presets_get(i);
 		
 		temp->eta -= 1;
-		if (temp->eta < 0)
-			send_eta_req(temp);
+		if (temp->eta < 0){
+			// send_eta_req(temp);
+		}
 	}
 }
+
+static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
+{
+	if (tick_time->tm_min % 10 == 0){
+		// send_all_eta_req();
+	}
+	else
+	{
+		decrement_etas();
+	}
+}
+
 
 static void eta_handler(char* operation, char* data){
 	if (strcmp(operation, "PRESET_ETA") == 0){
 		process_eta_data(data);
 	}
+	else if (strcmp(operation, "PRESET_SET") == 0){
+		process_preset_data(data);
+	}
 }
 
 static void process_eta_data(char* data){
-	
+	data_processor_init(data, '|');
+	char* stop_id = data_processor_get_string();
+	char* route_id = data_processor_get_string();
+	int eta = atoi(data_processor_get_string());
+	for (int i = 0; i < presets_get_count(); i++){
+		Preset *preset = presets_get(i);
+		if (strcmp(preset->stop_id, stop_id) == 0 && strcmp(preset->route_id, route_id) == 0){
+			preset->eta = eta;
+			break;
+		}
+	}
+	free(stop_id);
+	free(route_id);
+}
+
+static void process_preset_data(char* data){
+	data_processor_init(data, '|');
+	Preset *preset = malloc(sizeof(Preset));
+	strcpy(preset->stop_id, data_processor_get_string());
+	strcpy(preset->stop_name, data_processor_get_string());
+	strcpy(preset->route_id, data_processor_get_string());
+	strcpy(preset->route_name, data_processor_get_string());
+	presets_add(preset);
 }

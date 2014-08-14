@@ -1,5 +1,8 @@
 #include "pebble.h"
+#include "presets.h"
+#include "preset.h"
 #include "windows/window-presets.h"
+#include "windows/window-preset.h"
 
 // Set the number of presets.
 #define NUM_OF_PRESETS 5
@@ -588,6 +591,7 @@ static void init()
 	// 	});
 	// 	window_stack_push(window, true);
 	// }
+	presets_init();
 	window_presets_init();
 	window_presets_show();
 }

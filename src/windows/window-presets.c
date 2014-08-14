@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "../presets.h"
 #include "../preset.h"
+#include "window-preset.h"
 
 static void window_load(Window *window);
 static void window_unload(Window *window);
@@ -20,6 +21,7 @@ void window_presets_init(void){
 		.load = window_load,
 		.unload = window_unload
 	});
+	window_preset_init();
 }
 
 void window_presets_show(int preset_number){
@@ -58,7 +60,7 @@ static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuI
 	int preset_number = cell_index->row+1;
 	snprintf(row_label, 20, "Preset %d", preset_number);
 	graphics_context_set_text_color(ctx, GColorBlack);
-	menu_cell_basic_draw(ctx, cell_layer, row_label, NULL, NULL);
+	menu_cell_basic_draw(ctx, cell_layer, row_label, "10 minutes", NULL);
 }
 
 static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context){

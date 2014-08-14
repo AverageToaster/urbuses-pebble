@@ -13,6 +13,7 @@ This Pebble Smartwatch application provides up to date time estimates (ETAs) for
 
 # Are you planning any new features?
 - [X] 'Remove All Presets' button to configuration page.
+- [ ] Add a menu to see all presets at once.
 - [ ] Ability to set a 'home' stop.
 - [ ] Additional optional preset that displays the closest stop and next arriving line.
 - [ ] Additional optional preset that displays the closest stop that connects with home stop.

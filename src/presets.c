@@ -1,14 +1,15 @@
 #include <pebble.h>
+#include <math.h>
 #include "presets.h"
 #include "libs/linked-list/linked-list.h"
 #include "libs/message-queue/message-queue.h"
 #include "libs/data-processor/data-processor.h"
 #include "windows/window-presets.h"
+#include "windows/window-preset.h"
 #include "preset.h"
 
 #define STORAGE_PRESET_START 2
 #define PRESET_BLOCK_SIZE 2
-
 static void eta_handler(char* operation, char* data);
 static void process_eta_data(char* data);
 static void process_preset_data(char* data);
@@ -17,6 +18,7 @@ static void tick_callback(struct tm *tick_time, TimeUnits units_changed);
 typedef struct PresetBlock {
 	Preset presets[PRESET_BLOCK_SIZE];
 	uint8_t count;
+	int time;
 } PresetBlock;
 
 static LinkedRoot* presets = NULL;
@@ -28,8 +30,11 @@ void presets_init(void){
 }
 
 void presets_deinit(){
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Start of presets_deinit()");
 	tick_timer_service_unsubscribe();
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Middle of presets_deinit()");
 	presets_save();
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "End of presets_deinit()");
 }
 
 Preset* presets_get(int pos){
@@ -60,16 +65,18 @@ void presets_restore(void){
 	presets_clear();
 
 	if (!persist_exists(STORAGE_PRESET_START)){
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "No presets");
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "No presets");
 		return;
 	}
 
 	int block = 0;
 	PresetBlock* presetBlock = malloc(sizeof(PresetBlock));
 	int x = persist_read_data(STORAGE_PRESET_START, presetBlock, sizeof(PresetBlock));
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "read %d bytes", x);
 	uint8_t preset_count = presetBlock->count;
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "%d Presets", preset_count);
+	int save_time = presetBlock->time;
+	int now = time(NULL);
+	int seconds_elapsed = now-save_time;
+	int minutes_elapse = (int)(floorl(seconds_elapsed / 60));
 	for (int i = 0; i < preset_count; i++){
 		if (i > 0 && i % PRESET_BLOCK_SIZE == 0){
 			block += 1;
@@ -78,10 +85,14 @@ void presets_restore(void){
 			persist_read_data(STORAGE_PRESET_START + block, presetBlock, sizeof(PresetBlock));
 		}
 		Preset *preset = preset_clone(&presetBlock->presets[i % PRESET_BLOCK_SIZE]);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Adding Preset");
+		preset->eta -= minutes_elapse;
+		if (preset->eta <= 0)
+			preset->eta = PRESET_REFRESHING_ETA;
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Adding Preset");
 		presets_add(preset);
 	}
 	free(presetBlock);
+	send_all_eta_req();
 	return;
 }
 
@@ -89,7 +100,7 @@ void presets_save(void){
 	int block = 0;
 	uint8_t num_presets = presets_get_count();
 	if (num_presets == 0){
-		while (!persist_exists(STORAGE_PRESET_START + block)){
+		while (persist_exists(STORAGE_PRESET_START + block)){
 			persist_delete(STORAGE_PRESET_START + block);
 			block++;
 		}
@@ -98,16 +109,17 @@ void presets_save(void){
 	for (int i = 0; i < num_presets; i+= PRESET_BLOCK_SIZE){
 		PresetBlock *presetBlock = malloc(sizeof(PresetBlock));
 		presetBlock->count = num_presets;
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Num Presets = %d", num_presets);
+		presetBlock->time = time(NULL);
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Num Presets = %d", num_presets);
 		for (int j = 0; j < PRESET_BLOCK_SIZE; j++){
 			if (i+j >= num_presets)
 				break;
 			presetBlock->presets[j] = *presets_get(i+j);
 		}
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing at %d", STORAGE_PRESET_START+block);
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing at %d", STORAGE_PRESET_START+block);
 		int x = persist_write_data(STORAGE_PRESET_START+block, presetBlock, sizeof(PresetBlock));
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Wrote %d bytes", x);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "sizeof(PresetBlock) = %d", sizeof(PresetBlock));
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Wrote %d bytes", x);
+		// APP_LOG(APP_LOG_LEVEL_DEBUG, "sizeof(PresetBlock) = %d", sizeof(PresetBlock));
 		free(presetBlock);
 		block++;
 	}
@@ -118,30 +130,33 @@ void presets_save(void){
 void decrement_etas(){
 	for (int i = 0; i < presets_get_count(); i++){
 		Preset *temp = presets_get(i);
-		
-		temp->eta -= 1;
-		if (temp->eta < 0){
+		if (temp->eta > PRESET_REFRESHING_ETA)
+			temp->eta -= 1;
+		else if (temp->eta == PRESET_REFRESHING_ETA){
 			send_eta_req(temp);
 		}
 	}
 }
 
 void send_all_eta_req(){
-	for (int i = 0; i < presets_get_count(); i++){
-		Preset *preset = preset_get(i);
-		send_eta_req(preset);
-	}
+	mqueue_add("PRESET","PRESET_ETA", " ");
 }
 
 void send_eta_req(Preset *preset){
+	if (preset->eta == PRESET_SENT_REQUEST)
+		return;
+	preset->eta = PRESET_SENT_REQUEST;
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering send_eta_req");
 	char* data = malloc(21);
 	snprintf(data, 21, "%s|%s", preset->stop_id, preset->route_id);
 	mqueue_add("PRESET", "PRESET_ETA", data);
 	free(data);
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Ending send_eta_req");
 }
 
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering tick_callback");
 	if (tick_time->tm_min % 10 == 0){
 		send_all_eta_req();
 	}
@@ -149,10 +164,12 @@ static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 	{
 		decrement_etas();
 	}
+	refresh();
+	update_time_text();
 }
 
 static void eta_handler(char* operation, char* data){
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering handler");
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering handler");
 	if (strcmp(operation, "PRESET_ETA") == 0){
 		process_eta_data(data);
 	}
@@ -165,35 +182,46 @@ static void eta_handler(char* operation, char* data){
 }
 
 static void process_eta_data(char* data){
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering process eta. Data = %s", data);
 	data_processor_init(data, '|');
 	char* stop_id = data_processor_get_string();
 	char* route_id = data_processor_get_string();
 	char* eta_string = data_processor_get_string();
-	int eta;
-	if (strcmp(eta_string, "NO ETA") == 0){
-		int eta = -5;
-	}
-	else{
-		int eta = atoi(data_processor_get_string());
+	int eta = PRESET_NO_ETA;
+	if (strcmp(eta_string, "NO ETA") != 0){
+		eta = atoi(eta_string);
 	}
 	for (int i = 0; i < presets_get_count(); i++){
 		Preset *preset = presets_get(i);
 		if (strcmp(preset->stop_id, stop_id) == 0 && strcmp(preset->route_id, route_id) == 0){
 			preset->eta = eta;
+			// APP_LOG(APP_LOG_LEVEL_DEBUG, "Preset %s %s ETA = %d", preset->stop_name, preset->route_name, eta);
 			break;
 		}
 	}
 	free(stop_id);
 	free(route_id);
+	refresh();
+	update_time_text();
 }
 
 static void process_preset_data(char* data){
-	data_processor_init(data, '|');
-	Preset *preset = malloc(sizeof(Preset));
-	strcpy(preset->stop_id, data_processor_get_string());
-	strcpy(preset->stop_name, data_processor_get_string());
-	strcpy(preset->route_id, data_processor_get_string());
-	strcpy(preset->route_name, data_processor_get_string());
-	presets_add(preset);
-	refresh();
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Processing %s", data);
+	if (strcmp(data, "END") != 0){
+		data_processor_init(data, '|');
+		Preset *preset = malloc(sizeof(Preset));
+		strcpy(preset->stop_id, data_processor_get_string());
+		strcpy(preset->stop_name, data_processor_get_string());
+		strcpy(preset->route_id, data_processor_get_string());
+		strcpy(preset->route_name, data_processor_get_string());
+		preset->eta = -5;
+		presets_add(preset);
+	}
+	else{
+		send_all_eta_req();
+		refresh();
+		reset_selected_index();
+		update_time_text();
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "yay it worked");
+	}
 }

@@ -12,5 +12,6 @@ Preset* preset_clone(Preset *preset){
 	memcpy(clone->stop_name, preset->stop_name, 32);
 	memcpy(clone->route_id, preset->route_id, 32);
 	memcpy(clone->route_name, preset->route_name, 32);
+	clone->eta = preset->eta;
 	return clone;
 }

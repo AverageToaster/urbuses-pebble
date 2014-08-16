@@ -2,16 +2,21 @@
 #include "../presets.h"
 #include "../preset.h"
 #include "window-preset.h"
+#include "window-about.h"
+#include "window-no-presets.h"
 
 static void window_load(Window *window);
 static void window_unload(Window *window);
 static void window_appear(Window *window);
 
+static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data);
 static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data);
 static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data);
 static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context);
 static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data);
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed);
+static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data);
+static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data);
 
 static Window *window;
 static MenuLayer *menu_layer;
@@ -23,8 +28,9 @@ void window_presets_init(void){
 		.unload = window_unload,
 		.appear = window_appear
 	});
-	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
-	window_preset_init();	
+	window_preset_init();
+	window_about_init();
+	window_no_presets_init();
 }
 
 void window_presets_show(int preset_number){
@@ -32,8 +38,12 @@ void window_presets_show(int preset_number){
 }
 
 void window_presets_destroy(void){
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Start of window_presets_destroy()");
+	window_preset_destroy();
+	window_about_destroy();
+	window_no_presets_destroy();
 	window_destroy(window);
-	tick_timer_service_unsubscribe();
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "End of window_presets_destroy()");
 }
 
 void refresh(){
@@ -42,9 +52,16 @@ void refresh(){
 	}
 }
 
+void reset_selected_index(){
+	if (menu_layer != NULL && presets_get_count() > 0){
+		menu_layer_set_selected_index(menu_layer, (MenuIndex){.row=0, .section=0}, MenuRowAlignTop, false);
+	}
+}
+
 static void window_load(Window *window){
 	menu_layer = menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
 	menu_layer_set_callbacks(menu_layer, NULL, (MenuLayerCallbacks) {
+		.get_num_sections = menu_get_num_sections_callback,
 		.get_cell_height = menu_get_cell_height_callback,
     	.get_num_rows = menu_get_num_rows_callback,
     	.draw_row = menu_draw_row_callback,
@@ -62,8 +79,18 @@ static void window_appear(Window *window){
 	menu_layer_reload_data(menu_layer);
 }
 
+static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data){
+	return 2;
+}
+
 static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data){
-	return presets_get_count();
+	if (section_index == 0)
+		return presets_get_count();
+	else{
+		if (presets_get_count() == 0)
+			return 2;
+		return 1;
+	}
 }
 
 static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data){
@@ -79,37 +106,64 @@ static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *c
 	// free(row_label);
 	// free(sub_label);
 	// return size;
-	return 76;
+	if (cell_index->section == 0)
+		return 76;
+	return 36;
 }
 
 static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
-	char* row_label = malloc(32);
-	char* sub_label = malloc(32);
+	if (cell_index->section == 0)
+		draw_preset_row(ctx, cell_layer, cell_index, data);
+	else
+		draw_footer_row(ctx, cell_layer, cell_index, data);
+}
+
+static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
+	char* eta_label = malloc(32);
 	int preset_number = cell_index->row+1;
 	Preset *preset = presets_get(cell_index->row);
-	memcpy(row_label, preset->stop_name, 32);
-	memcpy(sub_label, preset->route_name, 32);
+	if (preset->eta > 0)
+		snprintf(eta_label, 32, (preset->eta != 1 ? "%d minutes" : "%d minute"), preset->eta);
+	else if (preset->eta == PRESET_REFRESHING_ETA || preset->eta == PRESET_SENT_REQUEST)
+		snprintf(eta_label, 32, "Getting ETA...");
+	else if (preset->eta == 0)
+		snprintf(eta_label, 32, "NOW");
+	else if (preset->eta <= PRESET_NO_ETA)
+		snprintf(eta_label, 32, "No Available ETA");
 	graphics_context_set_text_color(ctx, GColorBlack);
-	// menu_cell_basic_draw(ctx, cell_layer, row_label, sub_label, NULL);
-	graphics_draw_text(ctx, row_label, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144, 26), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-	graphics_draw_text(ctx, sub_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 26, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
-	graphics_draw_text(ctx, "10 minutes", fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 46, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
-	free(row_label);
-	free(sub_label);
+	graphics_draw_text(ctx, preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144, 26), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+	graphics_draw_text(ctx, preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 26, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
+	graphics_draw_text(ctx, eta_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 46, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
+
+	free(eta_label);
+}
+
+static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
+	if (cell_index->row == 0)
+		menu_cell_basic_draw(ctx, cell_layer, "About", NULL, NULL);
+	else
+		menu_cell_basic_draw(ctx, cell_layer, "No Presets?", NULL, NULL);
 }
 
 static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context){
-	Preset *preset = presets_get(cell_index->row);
-	window_preset_set_preset(preset, cell_index->row);
-	window_preset_show();
+	if (cell_index->section == 0){
+		if (cell_index->row >= presets_get_count())
+			return;
+		Preset *preset = presets_get(cell_index->row);
+		window_preset_set_preset(preset, cell_index->row);
+		window_preset_show();
+	}
+	else{
+		if (cell_index->row == 0){
+			window_about_show();
+		}
+		else{
+			window_no_presets_show();
+		}
+	}
 }
 
 void set_selected_index(int pos){
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Set Selected Index to %d", pos);
-	menu_layer_set_selected_index(menu_layer, (MenuIndex){.row=pos, .section=1}, MenuRowAlignCenter, false);
+	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Set Selected Index to %d", pos);
+	menu_layer_set_selected_index(menu_layer, (MenuIndex){.row=pos, .section=0}, MenuRowAlignCenter, false);
 }
-
-static void tick_callback(struct tm *tick_time, TimeUnits units_changed){
-	layer_mark_dirty(menu_layer_get_layer(menu_layer));
-}
-

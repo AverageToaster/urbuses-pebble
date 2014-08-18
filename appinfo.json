@@ -1,8 +1,8 @@
 {
   "uuid": "0367ebb0-4218-4f1b-b372-a3703374c960",
-  "shortName": "urbuses",
-  "longName": "urbuses pebble",
-  "companyName": "violentsquid",
+  "shortName": "UR Buses",
+  "longName": "UR Buses pebble",
+  "companyName": "TJ Stein",
   "capabilities": [ "configurable" ],
   "versionCode": 1,
   "versionLabel": "1.1.0",
@@ -10,12 +10,9 @@
     "watchface": false
   },
   "appKeys": {
-    "CURRENT_VIEW_TIME": 0,
-    "PRESET_NUMBER": 1,
-    "PRESET_ROUTE_ID": 2,
-    "PRESET_ROUTE_NAME": 3,
-    "PRESET_STOP_ID": 4,
-    "PRESET_STOP_NAME": 5
+    "group": 0,
+    "operation": 1,
+    "data": 2
   },
   "resources": {
     "media": [
@@ -24,6 +21,31 @@
         "type": "png",
         "name": "MENU_ICON",
         "file": "images/menu_icon.png"
+      },
+      {
+        "type": "png",
+        "name": "INFO",
+        "file": "images/info.png"
+      },
+      {
+        "type": "png",
+        "name": "QUESTION",
+        "file": "images/question.png"
+      },
+      {
+        "type": "png",
+        "name": "DELETE",
+        "file": "images/delete.png"
+      },
+      {
+        "type": "png",
+        "name": "CONFIRM",
+        "file": "images/confirm.png"
+      },
+      {
+        "type": "png",
+        "name": "CANCEL",
+        "file": "images/cancel.png"
       }
     ]
   }

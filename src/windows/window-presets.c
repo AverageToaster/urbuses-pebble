@@ -25,6 +25,9 @@ static GBitmap *info_bitmap;
 static GBitmap *question_bitmap;
 static GBitmap *delete_bitmap;
 
+/**
+ * Initialization method. Creates window and assigns handlers.
+ */
 void window_presets_init(void){
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers){
@@ -38,10 +41,16 @@ void window_presets_init(void){
 	window_no_presets_init();
 }
 
+/**
+ * Shows the window, with animation.
+ */
 void window_presets_show(int preset_number){
 	window_stack_push(window, true);
 }
 
+/**
+ * Deinitialization method. Destroys the window.
+ */
 void window_presets_destroy(void){
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Start of window_presets_destroy()");
 	window_preset_destroy();
@@ -52,18 +61,28 @@ void window_presets_destroy(void){
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "End of window_presets_destroy()");
 }
 
+/**
+ * Function to force the menu to redraw itself.
+ */
 void refresh(){
 	if (menu_layer != NULL){
 		menu_layer_reload_data(menu_layer);
 	}
 }
 
+/**
+ * Function to force the selected index to move back to the first item in the list.
+ */
 void reset_selected_index(){
 	if (menu_layer != NULL && presets_get_count() > 0){
 		menu_layer_set_selected_index(menu_layer, (MenuIndex){.row=0, .section=0}, MenuRowAlignTop, false);
 	}
 }
 
+/**
+ * Window load method. Creates the various layers inside the window.
+ * @param window Window being loaded.
+ */
 static void window_load(Window *window){
 	menu_layer = menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
 	menu_layer_set_callbacks(menu_layer, NULL, (MenuLayerCallbacks) {
@@ -81,6 +100,10 @@ static void window_load(Window *window){
 	delete_bitmap = gbitmap_create_with_resource(RESOURCE_ID_DELETE);
 }
 
+/**
+ * Window unload method. Destroys the various layers inside the window.
+ * @param window Window being destroyed.
+ */
 static void window_unload(Window *window){
 	gbitmap_destroy(info_bitmap);
 	gbitmap_destroy(question_bitmap);
@@ -88,14 +111,31 @@ static void window_unload(Window *window){
 	menu_layer_destroy(menu_layer);
 }
 
+/**
+ * Function to redraw the menu when the window reappears.
+ * @param window Window to redraw.
+ */
 static void window_appear(Window *window){
 	menu_layer_reload_data(menu_layer);
 }
 
+/**
+ * Callback for getting the number of sections in the menu layer.
+ * @param  menu_layer Specific menu layer to get the number of sections of.
+ * @param  data       Application specific data, not used in this app.
+ * @return            The number of sections in this menu.
+ */
 static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data){
 	return 2;
 }
 
+/**
+ * Returns the number of rows in a given sections of a menu.
+ * @param  menu_layer    Specific menu layer for this callback
+ * @param  section_index Section to get the number of rows in
+ * @param  data          Application specific data, not used in this app.
+ * @return               The number of rows in the given section
+ */
 static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data){
 	if (section_index == 0)
 		return presets_get_count();
@@ -104,24 +144,26 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
 	}
 }
 
+/**
+ * Returns the height of a given cell in a menu row.
+ * @param  menu_layer Specific menu layer for this callback
+ * @param  cell_index The section and row combination who's height is being requested
+ * @param  data       Application specific data, not used in this app.
+ * @return            The height of the cell
+ */
 static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data){
-	// Preset *preset = presets_get(cell_index->row);
-	// char* row_label = malloc(32);
-	// char* sub_label = malloc(32);
-	// memcpy(row_label, preset->stop_name, 32);
-	// memcpy(sub_label, preset->route_name, 32);
-	// GSize title_size = graphics_text_layout_get_content_size(row_label, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144,26), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft);
-	// GSize sub_size = graphics_text_layout_get_content_size(sub_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 0, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft);
-	// GSize min_size = graphics_text_layout_get_content_size("10 minutes", fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 46, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft);
-	// int size = title_size.h + sub_size.h+min_size.h+10;
-	// free(row_label);
-	// free(sub_label);
-	// return size;
 	if (cell_index->section == 0)
 		return 76;
 	return 36;
 }
 
+/**
+ * Function to draw the cells of a menu layer.
+ * @param ctx        Graphics context of the cell
+ * @param cell_layer Specific layer being drawn
+ * @param cell_index The section and row combination for the drawing cell.
+ * @param data       Application specific data, not used in this app.
+ */
 static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
 	if (cell_index->section == 0)
 		draw_preset_row(ctx, cell_layer, cell_index, data);
@@ -129,6 +171,13 @@ static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuI
 		draw_footer_row(ctx, cell_layer, cell_index, data);
 }
 
+/**
+ * Function to draw a Preset cell.
+ * @param ctx        Graphics context of the cell
+ * @param cell_layer Specific layer being drawn
+ * @param cell_index The section and row combination for the drawing cell.
+ * @param data       Application specific data, not used in this app.
+ */
 static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
 	char* eta_label = malloc(32);
 	int preset_number = cell_index->row+1;
@@ -149,6 +198,13 @@ static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *c
 	free(eta_label);
 }
 
+/**
+ * Function to draw a footer cell
+ * @param ctx        Graphics context of the cell
+ * @param cell_layer Specific layer being drawn
+ * @param cell_index The section and row combination for the drawing cell
+ * @param data       Application specific data, not used in this app.
+ */
 static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
 	char* row_label = malloc(20);
 	if (cell_index->row == 1){
@@ -165,11 +221,16 @@ static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *c
 	}
 	graphics_context_set_text_color(ctx, GColorBlack);
 	graphics_draw_text(ctx, row_label, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(36,0,122,28), 0, GTextAlignmentLeft, NULL);
-	// menu_cell_basic_draw(ctx, cell_layer, row_label, NULL, info_bitmap);
 	free(row_label);
 }
 
-static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context){
+/**
+ * Function to handle when a menu cell is selected
+ * @param menu_layer       Specific menu layer for this callback
+ * @param cell_index       The section and row combination for the selected cell
+ * @param data Application specific data, not used in this app.
+ */
+static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data){
 	if (cell_index->section == 0){
 		if (cell_index->row >= presets_get_count())
 			return;
@@ -190,7 +251,10 @@ static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_in
 	}
 }
 
+/**
+ * Function to move the menu layer to the specific position
+ * @param pos Index for the menu to be moved to.
+ */
 void set_selected_index(int pos){
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Set Selected Index to %d", pos);
 	menu_layer_set_selected_index(menu_layer, (MenuIndex){.row=pos, .section=0}, MenuRowAlignCenter, false);
 }

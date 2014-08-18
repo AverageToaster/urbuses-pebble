@@ -15,6 +15,9 @@ static void process_eta_data(char* data);
 static void process_preset_data(char* data);
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed);
 
+/**
+ * Preset block struct used for storing Presets in persistent storage.
+ */
 typedef struct PresetBlock {
 	Preset presets[PRESET_BLOCK_SIZE];
 	uint8_t count;
@@ -23,41 +26,70 @@ typedef struct PresetBlock {
 
 static LinkedRoot* presets = NULL;
 
+/**
+ * Initialization function. Registers preset messages, creates the presets list, and sets up the tick timer for preset ETA countdown.
+ */
 void presets_init(void){
 	mqueue_register_handler("PRESET", eta_handler);
 	presets = linked_list_create_root();
 	tick_timer_service_subscribe(MINUTE_UNIT, tick_callback);
 }
 
+/**
+ * Deinitialization function. Destroys the tick timer service and saves the presets.
+ */
 void presets_deinit(){
 	tick_timer_service_unsubscribe();
 	presets_save();
 }
 
+/**
+ * Function to get the Preset at a given position in the list.
+ * @param  pos position of the wanted Preset.
+ * @return     Preset at position pos.
+ */
 Preset* presets_get(int pos){
 	return (Preset*) linked_list_get(presets, pos);
 }
 
+/**
+ * Function to get the number of presets in the list.
+ * @return number of presets in the preset list.
+ */
 int presets_get_count(){
 	return linked_list_count(presets);
 }
 
+/**
+ * Adds a preset to the preset list.
+ * @param preset The preset to be added to the list.
+ */
 void presets_add(Preset* preset){
 	linked_list_append(presets, preset);
 }
 
+/**
+ * Clears the entire list of presets.
+ */
 void presets_clear(){
 	while (presets_get_count() > 0){
 		presets_remove(0);
 	}
 }
 
+/**
+ * Function to remove the preset at a given position.
+ * @param pos Position of the preset to delete.
+ */
 void presets_remove(int pos){
 	Preset* preset = presets_get(pos);
 	free(preset);
 	linked_list_remove(presets, pos);
 }
 
+/**
+ * Function to restore the presets saved in persistent storage into the list.
+ */
 void presets_restore(void){
 	presets_clear();
 	if (!persist_exists(STORAGE_PRESET_START))
@@ -88,14 +120,27 @@ void presets_restore(void){
 	return;
 }
 
+/**
+ * Function to restore the presets from the localStorage on the phone.
+ * Only is used when persistent storage is broken, as loading the presets
+ * from the phone is much slower and battery draining than persistent storage.
+ */
 void presets_restore_from_phone(){
 	mqueue_add("PRESET", "PRESET_RESTORE"," ");
 }
 
+/**
+ * Clears all the presets in localStorage on the phone. This is used when the user clears
+ * all presets from inside the app, so that the phone doesn't remember the saved presets the
+ * next time the user goes to the Settings page.
+ */
 void presets_clear_from_phone(){
 	mqueue_add("PRESET", "PRESET_CLEAR", " ");
 }
 
+/**
+ * Function that saves the presets into persistent storage.
+ */
 void presets_save(void){
 	int block = 0;
 	uint8_t num_presets = presets_get_count();
@@ -122,7 +167,12 @@ void presets_save(void){
 	return;
 }
 
-
+/**
+ * Function that decreases the ETAs of the presets by 1.
+ * When a preset's ETA reaches 0, the bus will likely be there for
+ * longer than a minute, so we wait 5 minutes before requesting a new
+ * ETA from the phone.
+ */
 void decrement_etas(){
 	for (int i = 0; i < presets_get_count(); i++){
 		Preset *temp = presets_get(i);
@@ -134,10 +184,17 @@ void decrement_etas(){
 	}
 }
 
+/**
+ * Function to ask the phone for the ETAs of every preset.
+ */
 void send_all_eta_req(){
 	mqueue_add("PRESET","PRESET_ETA", " ");
 }
 
+/**
+ * Function to get the ETA of a specific preset from the phone.
+ * @param preset Specific preset that will be sent to the phone.
+ */
 void send_eta_req(Preset *preset){
 	if (preset->eta == PRESET_SENT_REQUEST)
 		return;
@@ -148,6 +205,11 @@ void send_eta_req(Preset *preset){
 	free(data);
 }
 
+/**
+ * Tick function that is called every minute.
+ * @param tick_time     Time at which the tick even was triggered
+ * @param units_changed Time interval at which the tick timer is triggered.
+ */
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
 	if (tick_time->tm_min % 10 == 0){
@@ -161,6 +223,12 @@ static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 	update_time_text();
 }
 
+/**
+ * Function to handle the messages returned from the phone.
+ * Specifically the messages with the group code "PRESET"
+ * @param operation "OPERATION" response of the given message. This will determine what data processor is called.
+ * @param data      "DATA" response from the message.
+ */
 static void eta_handler(char* operation, char* data){
 	if (strcmp(operation, "PRESET_ETA") == 0){
 		process_eta_data(data);
@@ -173,6 +241,10 @@ static void eta_handler(char* operation, char* data){
 	}
 }
 
+/**
+ * Function to process the data of an ETA update message.
+ * @param data the "DATA" response of the given method, which is formatted as "stop_id|route_id|eta"
+ */
 static void process_eta_data(char* data){
 	data_processor_init(data, '|');
 	char* stop_id = data_processor_get_string();
@@ -195,6 +267,12 @@ static void process_eta_data(char* data){
 	update_time_text();
 }
 
+/**
+ * Function to process the data of a preset update.
+ * @param data "DATA" response of the given message, formatted either
+ * as "stop_id|stop_name|route_id|route_name", or as "END" to signify the end
+ * of the preset messages.
+ */
 static void process_preset_data(char* data){
 	if (strcmp(data, "END") != 0){
 		data_processor_init(data, '|');

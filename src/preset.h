@@ -2,6 +2,9 @@
 
 #pragma once
 
+/**
+ * Struct used to represent the Preset.
+ */
 typedef struct Preset{
 	char stop_id[10];
 	char stop_name[32];

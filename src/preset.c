@@ -1,11 +1,20 @@
 #include <pebble.h>
 #include "preset.h"
 
+/**
+ * function to destroy a Preset.
+ * @param preset Preset to free and destroy.
+ */
 void preset_destroy(Preset *preset){
 	if (!preset) return;
 	free(preset);
 }
 
+/**
+ * Function to clone a preset.
+ * @param  preset Preset to clone
+ * @return        Cloned preset.
+ */
 Preset* preset_clone(Preset *preset){
 	Preset* clone = malloc(sizeof(Preset));
 	memcpy(clone->stop_id, preset->stop_id, 32);

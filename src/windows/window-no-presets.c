@@ -11,6 +11,9 @@ static ScrollTextLayer *scroll_layer;
 static Layer *layer_header;
 static char* message = "You are seeing this because you haven't set up any presets yet. :(\n\nPlease visit the UR Buses Settings page in your Pebble app locker to set presets.";
 
+/**
+ * Initialization method. Creates window and assigns handlers.
+ */
 void window_no_presets_init(void){
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers){
@@ -19,14 +22,24 @@ void window_no_presets_init(void){
 	});
 }
 
+/**
+ * Deinitialization method. Destroys the window.
+ */
 void window_no_presets_destroy(void){
 	window_destroy(window);
 }
 
+/**
+ * Shows the window, with animation.
+ */
 void window_no_presets_show(){
 	window_stack_push(window, true);
 }
 
+/**
+ * Window load method. Creates the various layers inside the window.
+ * @param window Window being loaded.
+ */
 static void window_load(Window *window){
 	scroll_layer = scroll_text_layer_create(GRect(0,26,144,130));
 	scroll_text_layer_set_font(scroll_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
@@ -38,11 +51,20 @@ static void window_load(Window *window){
 	layer_add_child(window_get_root_layer(window), layer_header);
 }
 
+/**
+ * Window unload method. Destroys the various layers inside the window.
+ * @param window Window being destroyed.
+ */
 static void window_unload(Window *window){
 	scroll_text_layer_destroy(scroll_layer);
 	layer_destroy(layer_header);
 }
 
+/**
+ * Function to draw the header of the window.
+ * @param layer Layer being updated
+ * @param ctx   Graphics context of the given layer.
+ */
 static void layer_header_update(Layer *layer, GContext *ctx){
 	graphics_context_set_text_color(ctx, GColorBlack);
 	graphics_draw_text(ctx, "No Presets Set", fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0,0,144,22), 0, GTextAlignmentCenter, NULL);

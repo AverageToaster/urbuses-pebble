@@ -6,7 +6,10 @@
 #include "windows/window-error.h"
 #include "libs/message-queue/message-queue.h"
 
-
+/**
+ * Function to test if persistent storage is working.
+ * @return If persist is working.
+ */
 static bool persist_working(){
 	int test = persist_write_bool(100, true);
 	persist_delete(100);
@@ -15,10 +18,10 @@ static bool persist_working(){
 	return true;
 }
 
-/*
-* Initialization method. Creates the window and assigns the window, click, and tick_timer handlers.
-* Also loads up the last selected preset as the current view.
-*/
+/**
+ * Initialization method. Sets up the app. Creates message queue, presets list, and main app window.
+ * Also displays an error window if persistent storage is broken.
+ */
 static void init()
 {
 	bool is_persist_working = persist_working();
@@ -37,10 +40,9 @@ static void init()
 	}
 }
 
-/*
-* Deinitilization method. Destroy everything.
-* Also, write the current view into storage so init() can load it next time.
-*/
+/**
+ * Deinitiliazation method. Destroys everything in this file's scope.
+ */
 static void deinit()
 {
 
@@ -49,9 +51,9 @@ static void deinit()
 	window_presets_destroy();
 }
 
-/*
-* Main!
-*/
+/**
+ * Main!
+ */
 int main()
 {
 	init();

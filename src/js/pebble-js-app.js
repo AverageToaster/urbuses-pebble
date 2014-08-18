@@ -3,11 +3,14 @@
 * If you want to use this code in your own Transloc bus app, you need your own identifier
 * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
 */
-var identifier = "3W1Lwr5CF0mshJ5TKjJ0gRHNf8Kqp1baXv4jsnaNAHLUTGZmrf";
+var identifier = "";
 var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
 var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
-/*
- * Function to get the arrival time estimate for the given route stop combination.
+
+/**
+ * Gets the time estimate for a specific stop route combination
+ * @param  {String} stop  Stop ID of the requested ETA
+ * @param  {String} route Route ID of the requested ETA
  */
 function getTimeEstimate(stop, route) {
 	// If either the route or the stop are empty, then simply return -1 (no arrival estimate.)
@@ -50,6 +53,9 @@ function getTimeEstimate(stop, route) {
 	req.send();
 }
 
+/**
+ * Function to get the time estimates of all the saved presets.
+ */
 function getAllTimeEstimates(){
 	var presets = JSON.parse(window.localStorage.getItem("presets"));
 	var req = new XMLHttpRequest();
@@ -105,6 +111,12 @@ function getAllTimeEstimates(){
 	req.send();
 }
 
+/**
+ * Function to send all the ETAs in a dictionary to the Pebble.
+ * We have to send each ETA separately because of the way Pebble handles messages.
+ * @param  {Dictionary} dict Dictionary containing all the ETAs to be sent to the Pebble
+ * @param  {int} i    Current ETA in the dict being sent
+ */
 function sendAllETAs(dict, i){
 	var j = i;
 	// Base case. Stop when this is reached.
@@ -120,10 +132,12 @@ function sendAllETAs(dict, i){
 				},
 				function(e) {
 					if (attempts < 5){
+						console.log('Error sending. Attmepting to send again.');
 						attempts++;
 						sendAllETAs(dict, j);
 					}
 					else{
+						console.log('Too many NACKs');
 					}
 				});
 		}
@@ -134,33 +148,39 @@ function sendAllETAs(dict, i){
 	}
 }
 
+/**
+ * Sends a single ETA dictionary to the Pebble
+ * @param  {Dictionary} dict Dictionary containing a single eta for a preset.
+ */
 function sendETA(dict){
 	Pebble.sendAppMessage(dict,
 		function(e){
 		},
 		function(e){
 			if (attempts < 5){
+				console.log('Error sending. Attempting to send again.');
 				attempts++;
 				sendETA(dict);
 			}
 			else{
+				console.log('Too many NACKs.');
 			}
 		});
 }
 
-/*
- * Listener and function called when the app first connects the phone.
+/**
+ * Listener and function called when the app first connects to the phone.
  */
 Pebble.addEventListener("ready",
 	function(e) {
 		// App is connected to the phone.
 		console.log('Ready');
 	});
-/*
- * Listener and function are called when the phone receives a message from the app.
- * Messages are always a Tuple in the form of (route, stop).
- * All messages from the app to the phone are requesting time estimate, so parse the tuple,
- * and send it to getTimeEstimate().
+
+/**
+ * Listener and function called when the phone receives a message from the watch.
+ * Calls different functions based on what information is given to it.
+ * Handles single and multiple ETAs, and Setting and Clearing presets.
  */
 Pebble.addEventListener("appmessage",
 	function(e) {
@@ -192,6 +212,12 @@ Pebble.addEventListener("appmessage",
  * If previous presets have been stored, the function sends these to the config page as well, so that
  * the user won't override the previous presets they've set.
  */
+/**
+ * Listener and function for when the "Settings" button is selected in the Pebble app on the phone.
+ * This opens an HTML page on my server which is designed for the UR Buses settings page.
+ * If previous presets have been set, the function sends these to the settings page to populate the
+ * presets on the settings page.
+ */
 Pebble.addEventListener("showConfiguration",
 	function(e) {
 		var config_url = "http://tjstein.me/urbuses/urbuses_settings.html"; // Change this URL to the URL of your own configuration page.
@@ -208,6 +234,13 @@ Pebble.addEventListener("showConfiguration",
  * the function simply returns and does nothing.
  * If they actually select presets, it is send along in JSON format.
  * This information is parse out into a dictionary of dictionaries, and sent to a function to send to the app.
+ */
+/**
+ * Listener and function called when the Settings page is closed.
+ * If the cancel button was selected, or they back out of the Settings page,
+ * nothing is changed.
+ * If they set presets, or cleared all the presets, it is delivered via JSON,
+ * and parsed into dictionaries to be sent to the UR Buses app.
  */
 Pebble.addEventListener("webviewclosed",
 	function(e) {
@@ -249,6 +282,13 @@ Pebble.addEventListener("webviewclosed",
 		sendStuff(dict, 0);
 	});
 
+/**
+ * Function to restore the presets to the watch.
+ * This is only called when persistent storage is broken on
+ * the watch, and not be depended upon, as loading from the phone
+ * is slower and battery draining.
+ * Follows the same process as the webviewclosed Event Listener above.
+ */
 function restorePresets(){
 	console.log('Entering restorePresets');
 	var options = JSON.parse(window.localStorage.getItem("presets"));
@@ -285,6 +325,10 @@ function restorePresets(){
 	sendStuff(dict, 0);
 }
 
+/**
+ * Function that clears the localStorage item for the presets.
+ * Called when the user clears all presets on their watch.
+ */
 function clearPresets(){
 	window.localStorage.removeItem("presets");
 }
@@ -292,6 +336,12 @@ function clearPresets(){
 /*
  * As the app can't handle more than one response at a time, this function uses the callback function of the
  * sendAppMessage function to recursively send each preset to the app.
+ */
+/**
+ * Function to send the Presets to the watch. Due to how Pebble handles messages,
+ * they need to be queued up and sent one at a time.
+ * @param  {Dictionary} dict Dictionary of preset information to be sent to the watch.
+ * @param  {int} i    Current index of the preset being sent to the watch.
  */
 function sendStuff(dict, i) {
 	var j = i;

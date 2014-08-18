@@ -14,6 +14,9 @@ static GBitmap *confirm_bitmap;
 static GBitmap *cancel_bitmap;
 static uint8_t times_confirmed = 0;
 
+/**
+ * Initialization method. Creates window and assigns handlers.
+ */
 void window_clear_presets_init(){
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers){
@@ -22,14 +25,24 @@ void window_clear_presets_init(){
 	});
 }
 
-void window_clear_presets_show(){
-	window_stack_push(window, true);
-}
-
+/**
+ * Deinitialization method. Destroys the window.
+ */
 void window_clear_presets_destroy(){
 	window_destroy(window);
 }
 
+/**
+ * Shows the window, with animation.
+ */
+void window_clear_presets_show(){
+	window_stack_push(window, true);
+}
+
+/**
+ * Window load method. Creates the various layers inside the window.
+ * @param window Window being loaded.
+ */
 static void window_load(){
 	times_confirmed = 0;
 	Layer *window_layer = window_get_root_layer(window);
@@ -49,7 +62,10 @@ static void window_load(){
 	action_bar_layer_set_icon(action_bar, BUTTON_ID_UP, confirm_bitmap);
 	action_bar_layer_set_icon(action_bar, BUTTON_ID_DOWN, cancel_bitmap);
 }
-
+/**
+ * Window unload method. Destroys the various layers inside the window.
+ * @param window Window being destroyed.
+ */
 static void window_unload(){
 	text_layer_destroy(text_layer);
 	action_bar_layer_destroy(action_bar);
@@ -57,13 +73,22 @@ static void window_unload(){
 	gbitmap_destroy(cancel_bitmap);
 }
 
+/**
+ * Function to set how the ActionBar handles various button clicks.
+ * @param context pointer to application specific data, not used in this application.
+ */
 static void click_config_provider(void* context)
 {
 	window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
 	window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
 }
 
-
+/**
+ * Function that handles when the UP button is clicked. Here, UP means confirm,
+ * so we ask a few times to confirm that they want to clear the presets.
+ * @param recognizer Used to recognize that UP has been pressed.
+ * @param context    Application specific context, not used in this app.
+ */
 static void up_click_handler(ClickRecognizerRef recognizer, void *context){
 	switch (times_confirmed){
 		case 0:
@@ -86,6 +111,12 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context){
 	}
 }
 
+/**
+ * Function that handles when the DOWN button is clicked. In this window, that means
+ * that the user is cancelling the clearing of presets, so we exit the window back to the main menu.
+ * @param recognizer Used to recognize that DOWN has been pressed.
+ * @param context    Application specific context, not used in this app.
+ */
 static void down_click_handler(ClickRecognizerRef recognizer, void* context){
 	window_stack_pop(true);
 }

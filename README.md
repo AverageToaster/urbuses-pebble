@@ -3,7 +3,9 @@
 This Pebble Smartwatch application provides up to date time estimates (ETAs) for up to 5 user-customizable stops on any route on the University of Rochester bus system. The app also serves as a template for any organization that utilizes the [TransLoc API](http://transloc.com/), available [here](https://www.mashape.com/transloc/openapi-1-2#!documentation). To see what agencies TransLoc supports, look [here](http://transloc.com/agencies/).
 
 # Whats new?
-* v2.0.0
+* v2.1
+  * Minor changes to text in windows
+* v2.0
   * Updated app name from 'urbuses' to 'UR Buses'
   * Complete code redesign
   * UI update
@@ -16,12 +18,12 @@ This Pebble Smartwatch application provides up to date time estimates (ETAs) for
   * Altered settings page to not allow duplicate Presets.
   * Shows Error screens on certain catchable errors, like Broken persistent storage.
   * Still functions when persistent storage is broken. Loads presets from phone instead of storage.
-* v1.1.0
+* v1.1
   * No longer displays "Preset #" when scrolling to unset preset. Now simply finds the next set preset.
   * Shows warning page when there are no presets set, prompting the user to go to the Settings page.
   * 'Clear All Presets' button added to Settings Page, with confirmation. (Don't want people accidentally clearing their presets.
   * Shows error page when app detects broken persistent storage.
-* v1.0.6
+* v1.0
   * inital release
 
 # Are you planning any new features?

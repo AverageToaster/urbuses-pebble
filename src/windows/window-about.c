@@ -9,7 +9,7 @@ static void layer_header_update(Layer *layer, GContext *ctx);
 static Window *window;
 static ScrollTextLayer *scroll_layer;
 static Layer *layer_header;
-static char* about = "UR Buses is a Pebble application developed by TJ Stein.\nIf you want to see what else I'm working on, feel free to check out my github (github.com /tstein4) or follow my dev account @violentsquiddev";
+static char* about = "UR Buses is a Pebble application developed by TJ Stein.\nIf you want to see what else I'm working on, feel free to check out my github (github.com /tstein4) or follow my twitter account @TheOfficialTJS";
 
 /**
  * Initialization method. Creates window and assigns handlers.

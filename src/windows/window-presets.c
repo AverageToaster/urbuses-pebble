@@ -3,6 +3,7 @@
 #include "../preset.h"
 #include "window-preset.h"
 #include "window-about.h"
+#include "window-clear-presets.h"
 #include "window-no-presets.h"
 
 static void window_load(Window *window);
@@ -20,6 +21,9 @@ static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *c
 
 static Window *window;
 static MenuLayer *menu_layer;
+static GBitmap *info_bitmap;
+static GBitmap *question_bitmap;
+static GBitmap *delete_bitmap;
 
 void window_presets_init(void){
 	window = window_create();
@@ -30,6 +34,7 @@ void window_presets_init(void){
 	});
 	window_preset_init();
 	window_about_init();
+	window_clear_presets_init();
 	window_no_presets_init();
 }
 
@@ -41,6 +46,7 @@ void window_presets_destroy(void){
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Start of window_presets_destroy()");
 	window_preset_destroy();
 	window_about_destroy();
+	window_clear_presets_destroy();
 	window_no_presets_destroy();
 	window_destroy(window);
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "End of window_presets_destroy()");
@@ -69,9 +75,16 @@ static void window_load(Window *window){
     });
 	menu_layer_set_click_config_onto_window(menu_layer, window);
 	layer_add_child(window_get_root_layer(window), menu_layer_get_layer(menu_layer));
+
+	info_bitmap = gbitmap_create_with_resource(RESOURCE_ID_INFO);
+	question_bitmap = gbitmap_create_with_resource(RESOURCE_ID_QUESTION);
+	delete_bitmap = gbitmap_create_with_resource(RESOURCE_ID_DELETE);
 }
 
 static void window_unload(Window *window){
+	gbitmap_destroy(info_bitmap);
+	gbitmap_destroy(question_bitmap);
+	gbitmap_destroy(delete_bitmap);
 	menu_layer_destroy(menu_layer);
 }
 
@@ -87,9 +100,7 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
 	if (section_index == 0)
 		return presets_get_count();
 	else{
-		if (presets_get_count() == 0)
-			return 2;
-		return 1;
+		return 2;
 	}
 }
 
@@ -131,18 +142,31 @@ static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *c
 	else if (preset->eta <= PRESET_NO_ETA)
 		snprintf(eta_label, 32, "No Available ETA");
 	graphics_context_set_text_color(ctx, GColorBlack);
-	graphics_draw_text(ctx, preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144, 26), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-	graphics_draw_text(ctx, preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 26, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
-	graphics_draw_text(ctx, eta_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 46, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
+	graphics_draw_text(ctx, preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144, 26), GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+	graphics_draw_text(ctx, preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 26, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+	graphics_draw_text(ctx, eta_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 46, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 
 	free(eta_label);
 }
 
 static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
-	if (cell_index->row == 0)
-		menu_cell_basic_draw(ctx, cell_layer, "About", NULL, NULL);
-	else
-		menu_cell_basic_draw(ctx, cell_layer, "No Presets?", NULL, NULL);
+	char* row_label = malloc(20);
+	if (cell_index->row == 1){
+		strcpy(row_label, "About");
+		graphics_draw_bitmap_in_rect(ctx, info_bitmap, GRect(4,4,28,28));
+	}
+	else if (presets_get_count() == 0){
+		strcpy(row_label, "No Presets");
+		graphics_draw_bitmap_in_rect(ctx, question_bitmap, GRect(4,4,28,28));
+	}
+	else{
+		strcpy(row_label, "Clear Presets");
+		graphics_draw_bitmap_in_rect(ctx, delete_bitmap, GRect(4,4,28,28));
+	}
+	graphics_context_set_text_color(ctx, GColorBlack);
+	graphics_draw_text(ctx, row_label, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(36,0,122,28), 0, GTextAlignmentLeft, NULL);
+	// menu_cell_basic_draw(ctx, cell_layer, row_label, NULL, info_bitmap);
+	free(row_label);
 }
 
 static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *callback_context){
@@ -155,10 +179,13 @@ static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_in
 	}
 	else{
 		if (cell_index->row == 0){
-			window_about_show();
+			if (presets_get_count() == 0)
+				window_no_presets_show();
+			else
+				window_clear_presets_show();
 		}
 		else{
-			window_no_presets_show();
+			window_about_show();
 		}
 	}
 }

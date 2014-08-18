@@ -23,7 +23,7 @@ static TextLayer *route_layer;
 static TextLayer *time_layer;
 static TextLayer *minute_text_layer;
 static Preset *preset;
-static uint8_t preset_pos = -1;
+static int8_t preset_pos = -1;
 
 
 void window_preset_init(void){
@@ -44,11 +44,14 @@ void window_preset_destroy(void){
 	window_destroy(window);
 }
 
-void window_preset_set_preset(Preset* preset_arg, uint8_t pos){
+void window_preset_set_preset(Preset* preset_arg, int8_t pos){
 	preset = preset_arg;
 	preset_pos = pos;
 }
 
+void window_preset_clear_preset(){
+	preset_pos = -1;
+}
 
 /*
 * Function called when the app loads.
@@ -137,7 +140,7 @@ static void down_click_handler(ClickRecognizerRef recognizer, void* context)
 
 static void up_click_handler(ClickRecognizerRef recognizer, void *context)
 {
-	if (preset_pos == 0)
+	if (preset_pos <= 0)
 		preset_pos = presets_get_count() - 1;
 	else
 		preset_pos--;
@@ -151,7 +154,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context){
 }
 
 static void update_preset_text(){
-	if (preset != NULL){
+	if (window_is_loaded(window) && preset != NULL && preset_pos != -1){
 		preset = presets_get(preset_pos);
 		text_layer_set_text(stop_layer, preset->stop_name);
 		text_layer_set_text(route_layer, preset->route_name);
@@ -181,31 +184,33 @@ void update_time_text(){
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Test2");
 		update_preset_text();
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Test3");
-		if (preset != NULL && preset->eta > 0){
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4if");
-			char* time_buffer = malloc(10);
-			snprintf(time_buffer, 10, " %d ", preset->eta);
-			text_layer_set_text(time_layer, time_buffer);
-			if (preset->eta == 1)
-				text_layer_set_text(minute_text_layer, "minute");
-			else
-				text_layer_set_text(minute_text_layer, "minutes");
-			free (time_buffer);
-		}
-		else if (preset != NULL && preset->eta > PRESET_REFRESHING_ETA){
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4elseif1");
-			text_layer_set_text(time_layer, "NOW");
-			text_layer_set_text(minute_text_layer, " ");
-		}
-		else if (preset != NULL && (preset->eta == PRESET_REFRESHING_ETA || preset->eta == PRESET_SENT_REQUEST)){
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4elseif2");
-			refreshing_text();
-		}
-		else{
-			APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4else");
-			if (time_layer != NULL){
-				text_layer_set_text(time_layer, " -- ");
-				text_layer_set_text(minute_text_layer, "No Available ETA");
+		if (window_is_loaded(window)){
+			if (preset != NULL && preset->eta > 0){
+				APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4if");
+				char* time_buffer = malloc(10);
+				snprintf(time_buffer, 10, " %d ", preset->eta);
+				text_layer_set_text(time_layer, time_buffer);
+				if (preset->eta == 1)
+					text_layer_set_text(minute_text_layer, "minute");
+				else
+					text_layer_set_text(minute_text_layer, "minutes");
+				free (time_buffer);
+			}
+			else if (preset != NULL && preset->eta > PRESET_REFRESHING_ETA){
+				APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4elseif1");
+				text_layer_set_text(time_layer, "NOW");
+				text_layer_set_text(minute_text_layer, " ");
+			}
+			else if (preset != NULL && (preset->eta == PRESET_REFRESHING_ETA || preset->eta == PRESET_SENT_REQUEST)){
+				APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4elseif2");
+				refreshing_text();
+			}
+			else{
+				APP_LOG(APP_LOG_LEVEL_DEBUG, "Test4else");
+				if (time_layer != NULL){
+					text_layer_set_text(time_layer, " -- ");
+					text_layer_set_text(minute_text_layer, "No Available ETA");
+				}
 			}
 		}
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "test5");

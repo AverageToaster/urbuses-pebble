@@ -30,11 +30,8 @@ void presets_init(void){
 }
 
 void presets_deinit(){
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Start of presets_deinit()");
 	tick_timer_service_unsubscribe();
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Middle of presets_deinit()");
 	presets_save();
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "End of presets_deinit()");
 }
 
 Preset* presets_get(int pos){
@@ -63,15 +60,11 @@ void presets_remove(int pos){
 
 void presets_restore(void){
 	presets_clear();
-
-	if (!persist_exists(STORAGE_PRESET_START)){
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "No presets");
+	if (!persist_exists(STORAGE_PRESET_START))
 		return;
-	}
-
 	int block = 0;
 	PresetBlock* presetBlock = malloc(sizeof(PresetBlock));
-	int x = persist_read_data(STORAGE_PRESET_START, presetBlock, sizeof(PresetBlock));
+	persist_read_data(STORAGE_PRESET_START, presetBlock, sizeof(PresetBlock));
 	uint8_t preset_count = presetBlock->count;
 	int save_time = presetBlock->time;
 	int now = time(NULL);
@@ -88,12 +81,19 @@ void presets_restore(void){
 		preset->eta -= minutes_elapse;
 		if (preset->eta <= 0)
 			preset->eta = PRESET_REFRESHING_ETA;
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Adding Preset");
 		presets_add(preset);
 	}
 	free(presetBlock);
 	send_all_eta_req();
 	return;
+}
+
+void presets_restore_from_phone(){
+	mqueue_add("PRESET", "PRESET_RESTORE"," ");
+}
+
+void presets_clear_from_phone(){
+	mqueue_add("PRESET", "PRESET_CLEAR", " ");
 }
 
 void presets_save(void){
@@ -110,16 +110,12 @@ void presets_save(void){
 		PresetBlock *presetBlock = malloc(sizeof(PresetBlock));
 		presetBlock->count = num_presets;
 		presetBlock->time = time(NULL);
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Num Presets = %d", num_presets);
 		for (int j = 0; j < PRESET_BLOCK_SIZE; j++){
 			if (i+j >= num_presets)
 				break;
 			presetBlock->presets[j] = *presets_get(i+j);
 		}
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Writing at %d", STORAGE_PRESET_START+block);
-		int x = persist_write_data(STORAGE_PRESET_START+block, presetBlock, sizeof(PresetBlock));
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "Wrote %d bytes", x);
-		// APP_LOG(APP_LOG_LEVEL_DEBUG, "sizeof(PresetBlock) = %d", sizeof(PresetBlock));
+		persist_write_data(STORAGE_PRESET_START+block, presetBlock, sizeof(PresetBlock));
 		free(presetBlock);
 		block++;
 	}
@@ -146,17 +142,14 @@ void send_eta_req(Preset *preset){
 	if (preset->eta == PRESET_SENT_REQUEST)
 		return;
 	preset->eta = PRESET_SENT_REQUEST;
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering send_eta_req");
 	char* data = malloc(21);
 	snprintf(data, 21, "%s|%s", preset->stop_id, preset->route_id);
 	mqueue_add("PRESET", "PRESET_ETA", data);
 	free(data);
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Ending send_eta_req");
 }
 
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 {
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering tick_callback");
 	if (tick_time->tm_min % 10 == 0){
 		send_all_eta_req();
 	}
@@ -169,7 +162,6 @@ static void tick_callback(struct tm *tick_time, TimeUnits units_changed)
 }
 
 static void eta_handler(char* operation, char* data){
-	// APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering handler");
 	if (strcmp(operation, "PRESET_ETA") == 0){
 		process_eta_data(data);
 	}
@@ -182,7 +174,6 @@ static void eta_handler(char* operation, char* data){
 }
 
 static void process_eta_data(char* data){
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Entering process eta. Data = %s", data);
 	data_processor_init(data, '|');
 	char* stop_id = data_processor_get_string();
 	char* route_id = data_processor_get_string();
@@ -195,7 +186,6 @@ static void process_eta_data(char* data){
 		Preset *preset = presets_get(i);
 		if (strcmp(preset->stop_id, stop_id) == 0 && strcmp(preset->route_id, route_id) == 0){
 			preset->eta = eta;
-			// APP_LOG(APP_LOG_LEVEL_DEBUG, "Preset %s %s ETA = %d", preset->stop_name, preset->route_name, eta);
 			break;
 		}
 	}
@@ -206,7 +196,6 @@ static void process_eta_data(char* data){
 }
 
 static void process_preset_data(char* data){
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Processing %s", data);
 	if (strcmp(data, "END") != 0){
 		data_processor_init(data, '|');
 		Preset *preset = malloc(sizeof(Preset));
@@ -222,6 +211,5 @@ static void process_preset_data(char* data){
 		refresh();
 		reset_selected_index();
 		update_time_text();
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "yay it worked");
 	}
 }

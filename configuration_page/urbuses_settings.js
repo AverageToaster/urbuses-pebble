@@ -28,7 +28,6 @@ window.onload = function(){
 	var req = new XMLHttpRequest();
 	var text = 'https://transloc-api-1-2.p.mashape.com/routes.json?agencies=' + agency;
 	req.open('GET',text);
-	
 	req.setRequestHeader("X-Mashape-Authorization", identifier)
 	req.onload = function(e) {
 		if (req.readyState == 4 && req.status == 200) {
@@ -177,10 +176,12 @@ function route_change(){
 		document.getElementById("stop").innerHTML = "";
 		document.getElementById("stop").appendChild(opt);
 		for (var i = 0; i < routes_stops[document.getElementById("route").value].length; i++){
-			opt = document.createElement("option");
-			opt.value = routes_stops[document.getElementById("route").value][i];
-			opt.innerHTML = stops[opt.value];
-			document.getElementById("stop").appendChild(opt);
+			if (!check_already_selected(document.getElementById("route").value, routes_stops[document.getElementById("route").value][i])){
+				opt = document.createElement("option");
+				opt.value = routes_stops[document.getElementById("route").value][i];
+				opt.innerHTML = stops[opt.value];
+				document.getElementById("stop").appendChild(opt);
+			}
 		}
 		document.getElementById("stop").disabled = false;
 	  	document.getElementById("instruction").innerHTML = "Select a Stop:";
@@ -194,6 +195,15 @@ function route_change(){
 		document.getElementById("instruction").innerHTML = "Select a Route:";
 		
 	}
+}
+
+function check_already_selected(route, stop){
+	for (var i = 0; i < presets.length; i++){
+		if (presets_ids[i][0] == route && presets_ids[i][1] == stop){
+			return true;
+		}
+	}
+	return false;
 }
 /*
  * Function for when the stop value changes.

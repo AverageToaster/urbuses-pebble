@@ -3,7 +3,7 @@
 * If you want to use this code in your own Transloc bus app, you need your own identifier
 * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
 */
-var identifier = "";
+var identifier = "3W1Lwr5CF0mshJ5TKjJ0gRHNf8Kqp1baXv4jsnaNAHLUTGZmrf";
 var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
 var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 /*
@@ -11,7 +11,7 @@ var attempts = 0; // Variable to make sure we don't get stuck in a loop if we ge
  */
 function getTimeEstimate(stop, route) {
 	// If either the route or the stop are empty, then simply return -1 (no arrival estimate.)
-	if (route == "" || stop == "") {
+	if (route === "" || stop === "") {
 		Pebble.sendAppMessage({
 			"CURRENT_VIEW_TIME": -1
 		});
@@ -91,7 +91,7 @@ function getAllTimeEstimates(){
 						break;
 					}
 				}
-				if (dict2.data == ""){
+				if (dict2.data === ""){
 					dict2.data = stops[i] + "|" + routes[i] + "|NO ETA";
 				}
 				dict.push(dict2);
@@ -101,7 +101,7 @@ function getAllTimeEstimates(){
 			attempts = 0;
 			sendAllETAs(dict, 0);
 		}
-	}
+	};
 	req.send();
 }
 
@@ -145,7 +145,7 @@ function sendETA(dict){
 			}
 			else{
 			}
-		})
+		});
 }
 
 /*
@@ -164,6 +164,7 @@ Pebble.addEventListener("ready",
  */
 Pebble.addEventListener("appmessage",
 	function(e) {
+		console.log('Got message');
 		if (e.payload.group === "PRESET"){
 			if (e.payload.operation === "PRESET_ETA"){
 				if (e.payload.data === " "){
@@ -175,6 +176,12 @@ Pebble.addEventListener("appmessage",
 					var split = e.payload.data.split("|");
 					getTimeEstimate(split[0], split[1]);
 				}
+			}
+			else if (e.payload.operation === "PRESET_RESTORE"){
+				restorePresets();
+			}
+			else if (e.payload.operation === "PRESET_CLEAR"){
+				clearPresets();
 			}
 		}
 	});
@@ -221,13 +228,13 @@ Pebble.addEventListener("webviewclosed",
 		for (var i = 1; i <= 5; i++) {
 			if (options[i + ""] !== undefined) {
 				dict2 = {};
-				if (options[i].route_id != 0) {
+				if (options[i].route_id !== 0) {
 					dict2.group = "PRESET";
 					dict2.operation = "PRESET_SET";
-					dict2.data = options[i].stop_id
-					+ "|" + options[i].stop_name
-					+ "|" + options[i].route_id
-					+ "|" + options[i].route_name;
+					dict2.data = options[i].stop_id +
+					"|" + options[i].stop_name +
+					"|" + options[i].route_id +
+					"|" + options[i].route_name;
 					dict.push(dict2);
 					count++;
 				}
@@ -242,6 +249,45 @@ Pebble.addEventListener("webviewclosed",
 		sendStuff(dict, 0);
 	});
 
+function restorePresets(){
+	console.log('Entering restorePresets');
+	var options = JSON.parse(window.localStorage.getItem("presets"));
+	if (options === null)
+		return;
+	var dict = [];
+	var count = 1;
+	var dict2 = {};
+	dict2.group = "PRESET";
+	dict2.operation = "PRESET_CLEAR";
+	dict2.data = "";
+	dict.push(dict2);
+	for (var i = 1; i <= 5; i++) {
+		if (options[i + ""] !== undefined) {
+			dict2 = {};
+			if (options[i].route_id !== 0) {
+				dict2.group = "PRESET";
+				dict2.operation = "PRESET_SET";
+				dict2.data = options[i].stop_id+
+				"|" + options[i].stop_name+
+				"|" + options[i].route_id+
+				"|" + options[i].route_name;
+				dict.push(dict2);
+				count++;
+			}
+		}
+	}
+	dict2 = {};
+	dict2.group="PRESET";
+	dict2.operation = "PRESET_SET";
+	dict2.data = "END";
+	dict.push(dict2);
+	attempts = 0;
+	sendStuff(dict, 0);
+}
+
+function clearPresets(){
+	window.localStorage.removeItem("presets");
+}
 
 /*
  * As the app can't handle more than one response at a time, this function uses the callback function of the
@@ -250,7 +296,7 @@ Pebble.addEventListener("webviewclosed",
 function sendStuff(dict, i) {
 	var j = i;
 	// Base case. Stop when this is reached.
-	if (i >= dict.length || i < 0) {
+	if (i > dict.length || i < 0) {
 		return;
 	} else {
  		if (dict[i] !== undefined) {

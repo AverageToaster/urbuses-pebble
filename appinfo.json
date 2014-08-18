@@ -2,7 +2,7 @@
   "uuid": "0367ebb0-4218-4f1b-b372-a3703374c960",
   "shortName": "UR Buses",
   "longName": "UR Buses pebble",
-  "companyName": "violentsquid",
+  "companyName": "TJ Stein",
   "capabilities": [ "configurable" ],
   "versionCode": 1,
   "versionLabel": "1.1.0",
@@ -21,6 +21,31 @@
         "type": "png",
         "name": "MENU_ICON",
         "file": "images/menu_icon.png"
+      },
+      {
+        "type": "png",
+        "name": "INFO",
+        "file": "images/info.png"
+      },
+      {
+        "type": "png",
+        "name": "QUESTION",
+        "file": "images/question.png"
+      },
+      {
+        "type": "png",
+        "name": "DELETE",
+        "file": "images/delete.png"
+      },
+      {
+        "type": "png",
+        "name": "CONFIRM",
+        "file": "images/confirm.png"
+      },
+      {
+        "type": "png",
+        "name": "CANCEL",
+        "file": "images/cancel.png"
       }
     ]
   }

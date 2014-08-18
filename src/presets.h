@@ -19,3 +19,5 @@ void presets_save(void);
 
 void send_all_eta_req();
 void send_eta_req(Preset *preset);
+void presets_restore_from_phone();
+void presets_clear_from_phone();

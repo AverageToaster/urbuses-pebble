@@ -103,7 +103,7 @@ void mqueue_register_handler(char* group, MessageHandler handler) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
-static char *translate_error(AppMessageResult result) 
+static char *translate_error(AppMessageResult result)
 {
   switch (result)
   {

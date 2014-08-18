@@ -42,7 +42,7 @@ void window_preset_init(void){
  */
 void window_preset_show(void){
 	window_stack_push(window, true);
-	update_preset_text();
+	update_time_text();
 }
 
 /**

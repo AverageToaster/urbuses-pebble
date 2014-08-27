@@ -5,7 +5,7 @@
   "companyName": "TJ Stein",
   "capabilities": [ "configurable" ],
   "versionCode": 1,
-  "versionLabel": "2.2",
+  "versionLabel": "2.3",
   "watchapp": {
     "watchface": false
   },

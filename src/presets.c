@@ -188,6 +188,9 @@ void decrement_etas(){
  * Function to ask the phone for the ETAs of every preset.
  */
 void send_all_eta_req(){
+	for (int i = 0; i < presets_get_count(); i++){
+		presets_get(i)->eta = PRESET_SENT_REQUEST;
+	}
 	mqueue_add("PRESET","PRESET_ETA", " ");
 }
 

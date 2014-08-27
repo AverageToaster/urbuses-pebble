@@ -6,15 +6,16 @@
 
 static void window_load(Window *window);
 static void window_unload(Window *window);
+static void window_appear(Window *window);
+static void window_disappear(Window *window);
 static void click_config_provider(void *ctx);
 static void up_click_handler(ClickRecognizerRef recognizer, void* context);
 static void down_click_handler(ClickRecognizerRef recognizer, void* context);
 static void select_click_handler(ClickRecognizerRef recognizer, void* context);
-static void this_tick_callback(struct tm *tick_time, TimeUnits units_changed);
+static void accel_tap_handler(AccelAxisType axis, int32_t direction);
+static int max(int a, int b);
 static void update_preset_text();
 static void refreshing_text();
-static void eta_handler(int pos, int eta);
-static void display_eta(int eta);
 
 
 static Window *window;
@@ -32,9 +33,12 @@ void window_preset_init(void){
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers){
 		.load = window_load,
-		.unload = window_unload
+		.unload = window_unload,
+		.appear = window_appear,
+		.disappear = window_disappear
 	});
 	window_set_click_config_provider(window, click_config_provider);
+	accel_tap_service_subscribe(accel_tap_handler);
 }
 
 /**
@@ -49,6 +53,7 @@ void window_preset_show(void){
  * Deinitialization method. Destroys the window.
  */
 void window_preset_destroy(void){
+	accel_tap_service_unsubscribe();
 	window_destroy(window);
 }
 
@@ -82,14 +87,16 @@ static void window_load(Window *window)
 	stop_layer = text_layer_create(GRect(0, -5, bounds.size.w /* width */, 52 /* height */));
 	text_layer_set_font(stop_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(stop_layer, GTextAlignmentCenter);
+	text_layer_set_overflow_mode(stop_layer, GTextOverflowModeWordWrap);
 	layer_add_child(window_layer, text_layer_get_layer(stop_layer));
 
 	route_layer = text_layer_create(GRect(0,47, bounds.size.w, 28));
 	text_layer_set_font(route_layer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(route_layer, GTextAlignmentCenter);
+	text_layer_set_overflow_mode(route_layer, GTextOverflowModeWordWrap);
 	layer_add_child(window_layer, text_layer_get_layer(route_layer));
 
-	time_layer = text_layer_create(GRect(0,75, bounds.size.w, 48));
+	time_layer = text_layer_create(GRect(0,75, bounds.size.w, 42));
 	text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
 	if (preset->eta > 0){
 		char* time_buffer = malloc(10);
@@ -130,6 +137,14 @@ static void window_unload(Window *window){
 	text_layer_destroy(time_layer);
 	text_layer_destroy(minute_text_layer);
 	set_selected_index(preset_pos);
+}
+
+static void window_appear(Window *window){
+	accel_tap_service_subscribe(accel_tap_handler);
+}
+
+static void window_disappear(Window *window){
+	accel_tap_service_unsubscribe();
 }
 /**
  * Function to set how the window handles various button clicks.
@@ -187,15 +202,41 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context){
 	refreshing_text();
 }
 
+static void accel_tap_handler(AccelAxisType axis, int32_t direction)
+{
+	send_eta_req(preset);
+	refreshing_text();
+}
+
 /**
  * Function to update the route and stop layers to the preset's stop and route names.
  */
 static void update_preset_text(){
 	if (window_is_loaded(window) && preset != NULL && preset_pos != -1){
 		preset = presets_get(preset_pos);
+		int stop_height = graphics_text_layout_get_content_size(preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144,28), GTextOverflowModeWordWrap, GTextAlignmentCenter).h;
+		int route_height = graphics_text_layout_get_content_size(preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144,28), GTextOverflowModeWordWrap, GTextAlignmentCenter).h;
+		layer_set_frame(text_layer_get_layer(stop_layer), GRect(0,0,144, stop_height));
+		layer_set_frame(text_layer_get_layer(route_layer), GRect(0,stop_height, 144, route_height));
+		if (stop_height+route_height >= 96){
+			layer_set_frame(text_layer_get_layer(time_layer), GRect(0,stop_height+route_height, 144, 30));
+			text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK));
+			layer_set_frame(text_layer_get_layer(minute_text_layer), GRect(0,stop_height+route_height+30, 144, 28));
+		}
+		else{
+			text_layer_set_font(time_layer, fonts_get_system_font(FONT_KEY_BITHAM_42_BOLD));
+			layer_set_frame(text_layer_get_layer(time_layer), GRect(0, 76, 144, 48));
+			layer_set_frame(text_layer_get_layer(minute_text_layer), GRect(0,124, 144, 28));
+		}
 		text_layer_set_text(stop_layer, preset->stop_name);
 		text_layer_set_text(route_layer, preset->route_name);
 	}
+}
+
+static int max(int a, int b){
+	if (a > b)
+		return a;
+	return b;
 }
 
 /**

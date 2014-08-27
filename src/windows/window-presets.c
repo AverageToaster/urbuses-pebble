@@ -9,7 +9,9 @@
 static void window_load(Window *window);
 static void window_unload(Window *window);
 static void window_appear(Window *window);
+static void window_disappear(Window *window);
 
+static void reset_cell_height_sizes();
 static uint16_t menu_get_num_sections_callback(MenuLayer *menu_layer, void *data);
 static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t section_index, void *data);
 static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data);
@@ -18,12 +20,14 @@ static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuI
 static void tick_callback(struct tm *tick_time, TimeUnits units_changed);
 static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data);
 static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data);
+static void accel_tap_handler(AccelAxisType axis, int32_t direction);
 
 static Window *window;
 static MenuLayer *menu_layer;
 static GBitmap *info_bitmap;
 static GBitmap *question_bitmap;
 static GBitmap *delete_bitmap;
+static int sizes[5][2];
 
 /**
  * Initialization method. Creates window and assigns handlers.
@@ -33,12 +37,14 @@ void window_presets_init(void){
 	window_set_window_handlers(window, (WindowHandlers){
 		.load = window_load,
 		.unload = window_unload,
-		.appear = window_appear
+		.appear = window_appear,
+		.disappear = window_disappear
 	});
 	window_preset_init();
 	window_about_init();
 	window_clear_presets_init();
 	window_no_presets_init();
+	accel_tap_service_subscribe(accel_tap_handler);
 }
 
 /**
@@ -58,6 +64,7 @@ void window_presets_destroy(void){
 	window_clear_presets_destroy();
 	window_no_presets_destroy();
 	window_destroy(window);
+	accel_tap_service_unsubscribe();
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "End of window_presets_destroy()");
 }
 
@@ -66,6 +73,7 @@ void window_presets_destroy(void){
  */
 void refresh(){
 	if (menu_layer != NULL){
+		reset_cell_height_sizes();
 		menu_layer_reload_data(menu_layer);
 	}
 }
@@ -84,6 +92,7 @@ void reset_selected_index(){
  * @param window Window being loaded.
  */
 static void window_load(Window *window){
+	reset_cell_height_sizes();
 	menu_layer = menu_layer_create(layer_get_bounds(window_get_root_layer(window)));
 	menu_layer_set_callbacks(menu_layer, NULL, (MenuLayerCallbacks) {
 		.get_num_sections = menu_get_num_sections_callback,
@@ -98,6 +107,7 @@ static void window_load(Window *window){
 	info_bitmap = gbitmap_create_with_resource(RESOURCE_ID_INFO);
 	question_bitmap = gbitmap_create_with_resource(RESOURCE_ID_QUESTION);
 	delete_bitmap = gbitmap_create_with_resource(RESOURCE_ID_DELETE);
+
 }
 
 /**
@@ -117,6 +127,18 @@ static void window_unload(Window *window){
  */
 static void window_appear(Window *window){
 	menu_layer_reload_data(menu_layer);
+	accel_tap_service_subscribe(accel_tap_handler);
+}
+
+static void window_disappear(Window *window){
+	accel_tap_service_unsubscribe();
+}
+
+static void reset_cell_height_sizes(){
+	for (int i = 0; i < 5; i++){
+		sizes[i][0] = -1;
+		sizes[i][1] = -1;
+	}
 }
 
 /**
@@ -152,8 +174,14 @@ static uint16_t menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t secti
  * @return            The height of the cell
  */
 static int16_t menu_get_cell_height_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data){
-	if (cell_index->section == 0)
-		return 76;
+	if (cell_index->section == 0){
+		if (sizes[cell_index->row][0] == -1){
+			Preset *preset = presets_get(cell_index->row);
+			sizes[cell_index->row][0] = graphics_text_layout_get_content_size(preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144,26), GTextOverflowModeWordWrap, GTextAlignmentCenter).h;
+			sizes[cell_index->row][1] = graphics_text_layout_get_content_size(preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0,26,144,20), GTextOverflowModeWordWrap, GTextAlignmentCenter).h;
+		}
+		return sizes[cell_index->row][0] + sizes[cell_index->row][1] + 30;
+	}
 	return 36;
 }
 
@@ -180,7 +208,6 @@ static void menu_draw_row_callback(GContext *ctx, const Layer *cell_layer, MenuI
  */
 static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data){
 	char* eta_label = malloc(32);
-	int preset_number = cell_index->row+1;
 	Preset *preset = presets_get(cell_index->row);
 	if (preset->eta > 0)
 		snprintf(eta_label, 32, (preset->eta != 1 ? "%d minutes" : "%d minute"), preset->eta);
@@ -191,13 +218,12 @@ static void draw_preset_row(GContext *ctx, const Layer *cell_layer, MenuIndex *c
 	else if (preset->eta <= PRESET_NO_ETA)
 		snprintf(eta_label, 32, "No Available ETA");
 	graphics_context_set_text_color(ctx, GColorBlack);
-	graphics_draw_text(ctx, preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144, 26), GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-	graphics_draw_text(ctx, preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 26, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
-	graphics_draw_text(ctx, eta_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, 46, 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+	graphics_draw_text(ctx, preset->stop_name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(0,0,144, 26), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+	graphics_draw_text(ctx, preset->route_name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, sizes[cell_index->row][0], 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
+	graphics_draw_text(ctx, eta_label, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0, sizes[cell_index->row][0]+sizes[cell_index->row][1], 144, 20), GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 
 	free(eta_label);
 }
-
 /**
  * Function to draw a footer cell
  * @param ctx        Graphics context of the cell
@@ -223,6 +249,8 @@ static void draw_footer_row(GContext *ctx, const Layer *cell_layer, MenuIndex *c
 	graphics_draw_text(ctx, row_label, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD), GRect(36,0,122,28), 0, GTextAlignmentLeft, NULL);
 	free(row_label);
 }
+
+
 
 /**
  * Function to handle when a menu cell is selected
@@ -251,6 +279,12 @@ static void menu_select_click_callback(MenuLayer *menu_layer, MenuIndex *cell_in
 	}
 }
 
+
+static void accel_tap_handler(AccelAxisType axis, int32_t direction)
+{
+	menu_layer_reload_data(menu_layer);
+	send_all_eta_req();
+}
 /**
  * Function to move the menu layer to the specific position
  * @param pos Index for the menu to be moved to.

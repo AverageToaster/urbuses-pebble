@@ -67,5 +67,5 @@ static void window_unload(Window *window){
  */
 static void layer_header_update(Layer *layer, GContext *ctx){
 	graphics_context_set_text_color(ctx, GColorBlack);
-	graphics_draw_text(ctx, "UR Buses v2.2", fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0,0,144,22), 0, GTextAlignmentCenter, NULL);
+	graphics_draw_text(ctx, "UR Buses v2.3", fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), GRect(0,0,144,22), 0, GTextAlignmentCenter, NULL);
 }

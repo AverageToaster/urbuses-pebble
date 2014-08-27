@@ -3,6 +3,9 @@
 This Pebble Smartwatch application provides up to date time estimates (ETAs) for up to 5 user-customizable stops on any route on the University of Rochester bus system. The app also serves as a template for any organization that utilizes the [TransLoc API](http://transloc.com/), available [here](https://www.mashape.com/transloc/openapi-1-2#!documentation). To see what agencies TransLoc supports, look [here](http://transloc.com/agencies/).
 
 # Whats new?
+* v2.3
+  * Fixed bug where multi-line routes would overflow into eta text.
+  * Added Shake to refresh support in main menu and single preset screen.
 * v2.2
   * Fixed bug where ETA would not display on single preset window.
 * v2.1

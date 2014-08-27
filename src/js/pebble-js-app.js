@@ -3,7 +3,7 @@
 * If you want to use this code in your own Transloc bus app, you need your own identifier
 * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
 */
-var identifier = "3W1Lwr5CF0mshJ5TKjJ0gRHNf8Kqp1baXv4jsnaNAHLUTGZmrf";
+var identifier = "";
 var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
 var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 

@@ -32,6 +32,7 @@ This Pebble Smartwatch application provides up to date time estimates (ETAs) for
   * inital release
 
 # Are you planning any new features?
+- [ ] Show direction of line (ie towards Rush Rhees Library) 
 - [ ] Option to hold SELECT on a preset's window to delete preset on watch.
 - [ ] Additional optional preset that displays the closest stop and next arriving line.
 - [ ] Additional optional preset that displays the closest stop that connects with home stop.

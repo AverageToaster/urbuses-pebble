@@ -3,7 +3,7 @@
 * If you want to use this code in your own Transloc bus app, you need your own identifier
 * To get a key, make an account at https://www.mashape.com/ and find your environment keys there.
 */
-var identifier = "";
+var identifier = "3W1Lwr5CF0mshJ5TKjJ0gRHNf8Kqp1baXv4jsnaNAHLUTGZmrf";
 var agency = "283"; // This is the agency id for University of Rochester. If using another agency, change this variable to that id.
 var attempts = 0; // Variable to make sure we don't get stuck in a loop if we get nothing but Nacks back from Pebble.
 
@@ -35,7 +35,8 @@ function getTimeEstimate(stop, route) {
 				var data = JSON.parse(req.responseText);
 				// If there's no arrival data, then reply with -1.
 				if (data.data[0] === undefined || data.data[0].arrivals[0] === undefined) {
-					dict.data += "NO ETA";
+					getFallback(stop, route);
+					return;
 				} else {
 					// Otherwise, calculate the minutes difference from now to the arrival estimate, and reply with that.
 					var arrival = new Date(data.data[0].arrivals[0].arrival_at);
@@ -50,6 +51,38 @@ function getTimeEstimate(stop, route) {
 			}
 		}
 	};
+	req.send();
+}
+
+function getFallback(stop, route){
+	console.log('In Fallback');
+	var req = new XMLHttpRequest();
+	req.open('GET', 'http://www.tjstein.me/urbuses/libs/fallback.php?route=' + route + '&stop=' + stop);
+	req.onload = function(e){
+		if (req.readyState == 4 && req.status == 200){
+			if (req.status == 200){
+				console.log('Here');
+				var data = JSON.parse(req.responseText);
+				var dict = {};
+				dict.group = "PRESET";
+				dict.operation="PRESET_ETA";
+				dict.data = stop+"|"+route+"|";
+				if (data.eta == -1){
+					dict.data+= "NO ETA";
+				}else{
+					arrival = new Date();
+					arrival.setHours(parseInt(data.eta/100));
+					arrival.setMinutes(data.eta % 100);
+					var now = new Date();
+					var minutes = Math.floor(((arrival-now)/1000)/60);
+					dict.data += minutes;
+				}
+				attempts = 0;
+				sendETA(dict);
+			}
+		}
+		console.log('Here?');
+	}
 	req.send();
 }
 
